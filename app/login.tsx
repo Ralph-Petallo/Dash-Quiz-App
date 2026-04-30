@@ -1,4 +1,6 @@
+import { storage } from '@/services/storage';
 import { Link, useRouter } from 'expo-router';
+import React, { useState } from "react";
 import {
     Image,
     Pressable,
@@ -8,13 +10,32 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-const router = useRouter();
-const handleLogin = () => {
-    // Implement your login logic here (e.g., API call, validation)
-    console.log("Login button pressed");
-    router.push('/user-folder')
-}
+
 export default function LoginPage() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const router = useRouter();
+
+    const handleLogin = async () => {
+        try {
+            setLoading(true);
+
+            if (!email || !password) {
+                alert('Invalid credentials')
+            }
+
+            const data = await storage.getUser();
+            console.log(data)
+
+        } catch (err) {
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.boxContainer}>
@@ -26,12 +47,17 @@ export default function LoginPage() {
                     placeholder="Email"
                     placeholderTextColor="#999"
                     style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
                 />
+
                 <TextInput
                     placeholder="Password"
                     placeholderTextColor="#999"
                     secureTextEntry
                     style={styles.input}
+                    value={password}
+                    onChangeText={setPassword}
                 />
                 <Pressable onPress={handleLogin} style={({ pressed }) => [
                     styles.loginBtn,

@@ -1,9 +1,9 @@
 import { Text, View } from "react-native";
 
-export default function Records() {
+export default function Record() {
     return (
         <View>
-            <Text>This is your records page!</Text>
+            <Text>This is your Records Tab!</Text>
         </View>
     );
 }

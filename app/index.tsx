@@ -12,32 +12,25 @@ export default function IndexPage() {
         <View style={{ marginBottom: 20 }}>
           <Image source={require('../assets/images/bolt.png')} style={{ width: 42, height: 42 }} />
         </View>
-
         {/* Title */}
         <Text style={styles.title}>
           Learning is{" "}
           <Text style={styles.primary}>better</Text> when we do it{" "}
           <Text style={styles.primary}>together</Text>
         </Text>
-
         <Text style={styles.smallText}>
           Practice, learn, and improve your skills with Dash Quiz.
         </Text>
-
-        {/* Buttons */}
+        {/* Login button */}
         <View style={styles.buttonContainer}>
           <Pressable
-            onPress={() => {
-              router.push('/login');
-            }}
+            onPress={() => { router.push('/login'); }}
             style={({ pressed }) => [
               styles.loginBtn,
               { backgroundColor: !pressed ? PRIMARY : '#4f46e5' } // Change color on press
             ]}>
             <Text style={styles.loginText}>Login</Text>
           </Pressable>
-
-
           {/* Divider */}
           <View style={styles.dividerContainer}>
             <View style={styles.line} />
@@ -45,10 +38,9 @@ export default function IndexPage() {
             <View style={styles.line} />
           </View>
 
+          {/* Register button  */}
           <Pressable
-            onPress={() => {
-              router.push('/register');
-            }}
+            onPress={() => { router.push('/register'); }}
             style={({ pressed }) => [
               styles.registerBtn,
               { backgroundColor: pressed ? '#176d1e' : '#2b8533' } // Change color on press
