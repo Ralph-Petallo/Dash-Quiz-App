@@ -1,121 +1,69 @@
-import { storage } from '@/services/storage';
-import { Link, useRouter } from 'expo-router';
+import api from '@/services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import {
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet, Text,
-    TextInput,
-    View
-} from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-
-// Get screen width for fine-tuning if needed
-const { width } = Dimensions.get('window');
 
 export default function SignUpScreen() {
     const router = useRouter();
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [form, setForm] = useState(
+        { firstName: '', lastName: '', email: '', password: '', confirmPassword: '' }
+    );
 
     const handleRegister = async () => {
-        // Check if fields are empty
+        const { firstName, lastName, email, password, confirmPassword } = form;
+
         if (!firstName || !lastName || !email || !password) {
-            alert("Please fill in all fields");
+            Alert.alert("Error", "Required fields missing");
             return;
         }
 
         if (password !== confirmPassword) {
-            alert("Passwords do not match");
+            Alert.alert("Error", "Passwords do not match");
             return;
         }
 
-        // Call the storage service with ACTUAL state values
-        await storage.registerUser({
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            password: password,
-            confirmPassword: confirmPassword
-        });
+        try {
+            const { data } = await api.post('/register', {
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                password,
+                password_confirmation: confirmPassword
+            });
 
-        alert("Registration Successful!");
-        router.push('/login');
+            // OPTIONAL: only if backend returns token
+            if (data.token) {
+                await AsyncStorage.setItem('token', data.token);
+            }
+
+            Alert.alert("Success", "Account created!", [
+                { text: "OK", onPress: () => router.push('/login') }
+            ]);
+
+        } catch (e: any) {
+            console.log(e?.response?.data || e.message);
+            Alert.alert("Error", "Could not register user");
+        }
     };
 
     return (
         <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <Image source={require('../assets/images/bolt.png')} style={styles.logo} />
+                    <Text style={styles.title}>Sign up</Text>
 
-                    <View style={styles.header}>
-                        <Image source={require('../assets/images/bolt.png')} style={styles.logo} resizeMode="contain" />
-                        <Text style={styles.title}>Sign up</Text>
-                    </View>
+                    <TextInput style={styles.input} placeholder="First Name" onChangeText={(t) => setForm({ ...form, firstName: t })} />
+                    <TextInput style={styles.input} placeholder="Last Name" onChangeText={(t) => setForm({ ...form, lastName: t })} />
+                    <TextInput style={styles.input} placeholder="Email" autoCapitalize="none" onChangeText={(t) => setForm({ ...form, email: t })} />
+                    <TextInput style={styles.input} placeholder="Password" secureTextEntry onChangeText={(t) => setForm({ ...form, password: t })} />
+                    <TextInput style={styles.input} placeholder="Confirm Password" secureTextEntry onChangeText={(t) => setForm({ ...form, confirmPassword: t })} />
 
-                    <View style={styles.form}>
-                        {/* 🔑 IMPORTANT: Added onChangeText to every input */}
-                        <TextInput
-                            style={styles.inputFull}
-                            placeholder="First Name"
-                            value={firstName}
-                            onChangeText={setFirstName} // Updates state as you type
-                            placeholderTextColor="#94a3b8"
-                        />
-                        <TextInput
-                            style={styles.inputFull}
-                            placeholder="Last Name"
-                            value={lastName}
-                            onChangeText={setLastName}
-                            placeholderTextColor="#94a3b8"
-                        />
-                        <TextInput
-                            style={styles.inputFull}
-                            placeholder="Email"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholderTextColor="#94a3b8"
-                        />
-                        <TextInput
-                            style={styles.inputFull}
-                            placeholder="Password"
-                            secureTextEntry
-                            value={password}
-                            onChangeText={setPassword}
-                            placeholderTextColor="#94a3b8"
-                        />
-                        <TextInput
-                            style={styles.inputFull}
-                            placeholder="Confirm Password"
-                            secureTextEntry
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            placeholderTextColor="#94a3b8"
-                        />
-
-                        <Pressable onPress={handleRegister} style={({ pressed }) => [
-                            styles.submitBtn,
-                            { backgroundColor: pressed ? '#166534' : '#15803d' }
-                        ]}>
-                            <Text style={styles.submitText}>Submit</Text>
-                        </Pressable>
-
-                        <View style={styles.footer}>
-                            <Text style={styles.footerText}>Already have an account? </Text>
-                            <Link href="/login" asChild>
-                                <Pressable><Text style={styles.linkText}>Login</Text></Pressable>
-                            </Link>
-                        </View>
-                    </View>
+                    <Pressable onPress={handleRegister} style={styles.submitBtn}>
+                        <Text style={styles.submitText}>Submit</Text>
+                    </Pressable>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -123,91 +71,11 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    scrollContent: {
-        paddingHorizontal: width * 0.06,
-        paddingTop: 20,
-        paddingBottom: 30,
-        alignItems: 'center',
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 25,
-    },
-    logo: {
-        width: 60, // Smaller logo for 360px screen
-        height: 60,
-        marginBottom: 8,
-    },
-    title: {
-        fontSize: 26, // Scaled down from 32
-        fontWeight: '800',
-        color: '#1e293b',
-    },
-    form: {
-        width: '100%',
-        gap: 12, // Consistent vertical spacing
-    },
-    row: {
-        flexDirection: 'row',
-        width: '100%',
-        gap: 10,
-    },
-    inputFull: {
-        width: '100%',
-        height: 48, // Reduced height for smaller screens
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        fontSize: 15,
-        backgroundColor: '#fff',
-    },
-    inputHalf: {
-        flex: 1,
-        height: 48,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        fontSize: 15,
-        backgroundColor: '#fff',
-    },
-    submitBtn: {
-        width: '100%',
-        height: 50,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 8,
-        // Subtle shadow
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-    },
-    submitText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 15,
-    },
-    footerText: {
-        color: '#64748b',
-        fontSize: 13,
-    },
-    linkText: {
-        color: '#4f46e5',
-        fontWeight: '700',
-        fontSize: 13,
-        textDecorationLine: 'underline',
-    },
+    safeArea: { flex: 1, backgroundColor: '#fff' },
+    scrollContent: { padding: 25, alignItems: 'center' },
+    logo: { width: 60, height: 60, marginBottom: 10 },
+    title: { fontSize: 26, fontWeight: '800', marginBottom: 20 },
+    input: { width: '100%', height: 50, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingHorizontal: 12, marginBottom: 12 },
+    submitBtn: { width: '100%', height: 50, backgroundColor: '#15803d', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+    submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -3,74 +3,61 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface UserProfile {
     id: number;
     firstName: string;
-    email: string;
     lastName: string;
+    email: string;
     password: string;
-    confirmPassword: string;
 }
 
-export const USER_STORAGE_KEY = 'users';
-const ID_COUNTER_KEY = 'last_user_id';
-
-AsyncStorage.getItem(ID_COUNTER_KEY, Object.create([]));
+const USER_STORAGE_KEY = 'users';
+const CURRENT_USER_KEY = 'current_user';
 
 export const storage = {
-
-    // Internal helper to get and bump the ID
-    getNextId: async (): Promise<number> => {
-        try {
-            const lastId = await AsyncStorage.getItem(ID_COUNTER_KEY);
-            const nextId = lastId ? parseInt(lastId, 10) + 1 : 1;
-
-            await AsyncStorage.setItem(ID_COUNTER_KEY, nextId.toString());
-            return nextId;
-        } catch (error) {
-            return 1;
-        }
-    },
-
+    // Register: Adds a new user to the array
     registerUser: async (userData: Omit<UserProfile, 'id'>) => {
         try {
-            // 1. Get the auto-incremented ID
-            const newId = await storage.getNextId();
+            const existingData = await AsyncStorage.getItem(USER_STORAGE_KEY);
+            const users: UserProfile[] = existingData ? JSON.parse(existingData) : [];
+            
+            const newUser: UserProfile = { 
+                ...userData, 
+                id: Date.now() // Simple unique ID
+            };
 
-            const newUser: UserProfile = { ...userData, id: newId };
-
-            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify([newUser]));
-
-            console.log(`User registered with ID: ${newId}`);
+            users.push(newUser);
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
             return newUser;
         } catch (error) {
-            console.error("Save error:", error);
+            console.error("Registration error:", error);
+            throw error;
         }
     },
 
-    getUser: async (): Promise<UserProfile | null> => {
-        if (!USER_STORAGE_KEY) return null;
-
+    // Login: Finds user and sets "session"
+    login: async (email: string, pass: string): Promise<UserProfile | null> => {
         try {
-            const value = await AsyncStorage.getItem(USER_STORAGE_KEY);
-            return value ? JSON.parse(value) : null;
+            const data = await AsyncStorage.getItem(USER_STORAGE_KEY);
+            if (!data) return null;
+
+            const users: UserProfile[] = JSON.parse(data);
+            const user = users.find(u => u.email === email && u.password === pass);
+
+            if (user) {
+                await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+                return user;
+            }
+            return null;
         } catch (error) {
-            console.error("Fetch error:", error);
             return null;
         }
     },
 
-    userLogout: async () => {
-        try {
-
-        } catch (error) {
-            console.error("Clear error:", error);
-        }
+    // Get current logged in user
+    getCurrentUser: async (): Promise<UserProfile | null> => {
+        const data = await AsyncStorage.getItem(CURRENT_USER_KEY);
+        return data ? JSON.parse(data) : null;
     },
 
-    // 3. Add a clear method (Essential for Logouts!)
-    clearUser: async () => {
-        try {
-            await AsyncStorage.removeItem(USER_STORAGE_KEY);
-        } catch (error) {
-            console.error("Clear error:", error);
-        }
+    logout: async () => {
+        await AsyncStorage.removeItem(CURRENT_USER_KEY);
     }
 };

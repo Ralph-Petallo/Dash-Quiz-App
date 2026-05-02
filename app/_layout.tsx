@@ -1,17 +1,18 @@
+import { COLORS } from "@/constants/colors";
+import { AuthProvider } from "@/store/authStore";
+import { DataProvider } from "@/store/dataStore";
 import { Slot, usePathname } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function RootLayout() {
+function LayoutContent() {
   const pathname = usePathname();
-
-  // Check if the current route is inside the user-folder
-  const isUserSection = pathname.includes('user-folder');
+  const isUserSection = pathname?.includes("user-folder");
 
   return (
     <SafeAreaView style={styles.container}>
       <Slot />
-      {/* Only shows the footer if NOT in the user section */}
+
       {!isUserSection && (
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -23,15 +24,19 @@ export default function RootLayout() {
   );
 }
 
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <DataProvider>
+        <LayoutContent />
+      </DataProvider>
+    </AuthProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginVertical: 20,
   },
   footer: {
     fontSize: 8,
@@ -39,7 +44,7 @@ const styles = StyleSheet.create({
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#4f46e5",
+    backgroundColor: COLORS.primary,
   },
   footerText: {
     color: "#fff",
@@ -47,5 +52,4 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 10,
   },
-
 });
