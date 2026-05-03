@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 /* ── Power Icon ── */
@@ -72,8 +72,7 @@ export default function Sidebar(props: any) {
                 {/* HEADER */}
                 <View style={styles.header}>
                     <View style={styles.logoIconWrap}>
-                        <View style={styles.boltTop} />
-                        <View style={styles.boltBottom} />
+                        <Image source={require('../assets/images/bolt.png')} style={{ width: 32, height: 32 }} />
                     </View>
                     <Text style={styles.appName}>
                         DASH<Text style={styles.appNameAccent}>QUIZ</Text>
@@ -88,7 +87,7 @@ export default function Sidebar(props: any) {
             {/* FOOTER (FIXED) */}
             <View style={styles.footer}>
                 <View style={styles.footerBox}>
-                    
+
                     {/* USER */}
                     <View style={styles.footerLeft}>
                         <View style={styles.avatar}>
@@ -148,8 +147,6 @@ const styles = StyleSheet.create({
     logoIconWrap: {
         width: 32,
         height: 32,
-        backgroundColor: INDIGO,
-        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',

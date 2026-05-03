@@ -2,7 +2,7 @@ import { COLORS } from "@/constants/colors";
 import { AuthProvider } from "@/store/authStore";
 import { DataProvider } from "@/store/dataStore";
 import { Slot, usePathname } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const INDIGO = "#4f46e5";
@@ -12,8 +12,7 @@ function Header() {
     <View style={styles.header}>
       <View style={styles.logoRow}>
         <View style={styles.logoIconWrap}>
-          <View style={styles.boltTop} />
-          <View style={styles.boltBottom} />
+          <Image source={require('../assets/images/bolt.png')} style={{ width: 32, height: 32 }} />
         </View>
         <Text style={styles.logoText}>
           Dash<Text style={styles.logoAccent}>Quiz</Text>
