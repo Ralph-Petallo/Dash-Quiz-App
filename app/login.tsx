@@ -2,16 +2,33 @@ import useAuth from '@/hooks/useAuth';
 import api from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const INDIGO = '#4f46e5';
+const INDIGO_DARK = '#4338ca';
+const GREEN = '#22c55e';
+const GREEN_DARK = '#16a34a';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const router = useRouter();
-    const { fetchUser } = useAuth(); // ✅ ADD THIS
+    const { fetchUser } = useAuth();
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -19,81 +36,307 @@ export default function LoginPage() {
             return;
         }
 
+        setLoading(true);
         try {
-            const { data } = await api.post('/mobile/login', {
-                email,
-                password
-            });
+            const { data } = await api.post('/mobile/login', { email, password });
 
             if (data?.token) {
                 await AsyncStorage.setItem('token', data.token);
                 await fetchUser();
-                router.push('/user-folder'); // or your actual drawer route
+                router.push('/user-folder');
             } else {
                 Alert.alert('Login Failed', 'No token received');
             }
-
         } catch (error: any) {
             console.log(error?.response?.data || error.message);
-
             Alert.alert(
                 'Login Failed',
                 error?.response?.data?.message || 'Invalid email or password'
             );
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.boxContainer}>
-                <Image source={require('../assets/images/bolt.png')} style={styles.logo} />
-                <Text style={styles.title}>Dash<Text style={styles.quiz}>Quiz</Text></Text>
+        <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
 
-                <TextInput
-                    placeholder="Email"
-                    style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                />
+                    {/* ── Hero Text ── */}
+                    <Text style={styles.heroText}>
+                        {'Learning is '}
+                        <Text style={styles.heroAccent}>better{'\n'}</Text>
+                        {'when we do it\n'}
+                        <Text style={styles.heroAccent}>together</Text>
+                    </Text>
 
-                <TextInput
-                    placeholder="Password"
-                    secureTextEntry
-                    style={styles.input}
-                    value={password}
-                    onChangeText={setPassword}
-                />
+                    <Text style={styles.heroSub}>
+                        Practice, learn, and improve your skills with Dash Quiz.
+                    </Text>
 
-                <Pressable onPress={handleLogin} style={styles.loginBtn}>
-                    <Text style={styles.loginText}>Login</Text>
-                </Pressable>
+                    {/* ── Card ── */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Welcome back!</Text>
+                        <Text style={styles.cardSubtitle}>Sign in to your account</Text>
 
-                <View style={styles.dividerContainer}>
-                    <View style={styles.line} />
-                    <Text style={styles.dividerText}>or</Text>
-                    <View style={styles.line} />
-                </View>
+                        {/* Email */}
+                        <Text style={styles.label}>Email address</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="@example.com"
+                            placeholderTextColor="#94a3b8"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            value={email}
+                            onChangeText={setEmail}
+                        />
 
-                <Pressable onPress={() => router.push('/register')} style={styles.registerBtn}>
-                    <Text style={styles.registerText}>Create Account</Text>
-                </Pressable>
-            </View>
+                        {/* Password */}
+                        <Text style={styles.label}>Password</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="••••••"
+                            placeholderTextColor="#94a3b8"
+                            secureTextEntry
+                            value={password}
+                            onChangeText={setPassword}
+                        />
+
+                        {/* Login Button */}
+                        <Pressable
+                            onPress={handleLogin}
+                            style={({ pressed }) => [
+                                styles.loginBtn,
+                                pressed && styles.loginBtnPressed
+                            ]}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.loginText}>Login</Text>
+                            )}
+                        </Pressable>
+
+                        {/* Forgot Password */}
+                        <Pressable style={styles.forgotWrap}>
+                            <Text style={styles.forgotText}>Forgot password?</Text>
+                        </Pressable>
+
+                        {/* Divider */}
+                        <View style={styles.dividerRow}>
+                            <View style={styles.line} />
+                            <Text style={styles.dividerText}>or</Text>
+                            <View style={styles.line} />
+                        </View>
+
+                        {/* Create Account Button */}
+                        <Pressable
+                            onPress={() => router.push('/register')}
+                            style={({ pressed }) => [
+                                styles.registerBtn,
+                                pressed && styles.registerBtnPressed
+                            ]}
+                        >
+                            <Text style={styles.registerText}>Create account</Text>
+                        </Pressable>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
+
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#f4f6f8", justifyContent: "center", alignItems: "center", padding: 20 },
-    boxContainer: { width: "100%", maxWidth: 400, backgroundColor: "#fff", padding: 25, borderRadius: 16, elevation: 5 },
-    title: { fontSize: 26, fontWeight: "700", textAlign: "center", marginBottom: 20 },
-    quiz: { color: "#4f46e5" },
-    logo: { width: 50, height: 50, alignSelf: 'center', marginBottom: 10 },
-    input: { backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, padding: 14, marginBottom: 12 },
-    loginBtn: { backgroundColor: "#4f46e5", padding: 14, borderRadius: 10, marginTop: 10 },
-    loginText: { color: "#fff", textAlign: "center", fontWeight: "600" },
-    dividerContainer: { flexDirection: "row", alignItems: "center", marginVertical: 20 },
-    line: { flex: 1, height: 1, backgroundColor: "#ddd" },
-    dividerText: { marginHorizontal: 10, color: "#888" },
-    registerBtn: { borderWidth: 1, borderColor: "#2b8533", padding: 12, borderRadius: 10, backgroundColor: 'green' },
-    registerText: { color: "#fff", textAlign: "center", fontWeight: "600" },
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#f8fafc'
+    },
+
+    scrollContent: {
+        flexGrow: 1,
+        paddingHorizontal: 22,
+        paddingTop: 32,
+        paddingBottom: 40
+    },
+
+    badgeBox: {
+        display: "flex",
+        justifyContent: "center",
+        marginHorizontal: "auto",
+    },
+
+    /* ── Badge ── */
+    badge: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#eef2ff',
+        borderRadius: 999,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        marginBottom: 22
+    },
+
+    badgeStar: {
+        color: INDIGO,
+        fontSize: 11,
+        fontWeight: '700'
+    },
+
+    badgeText: {
+        color: INDIGO,
+        fontSize: 12,
+        fontWeight: '600',
+        letterSpacing: 0.2
+    },
+
+    /* ── Hero ── */
+    heroText: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#0f172a',
+        textAlign: 'center',
+        lineHeight: 40,
+        marginBottom: 14,
+        letterSpacing: -0.5
+    },
+
+    heroAccent: {
+        color: INDIGO,
+        fontWeight: '800'
+    },
+
+    heroSub: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#64748b',
+        lineHeight: 22,
+        marginBottom: 28
+    },
+
+    /* ── Card ── */
+    card: {
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        padding: 22,
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3
+    },
+
+    cardTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#0f172a',
+        marginBottom: 4
+    },
+
+    cardSubtitle: {
+        fontSize: 13,
+        color: '#64748b',
+        marginBottom: 20
+    },
+
+    /* ── Labels & Inputs ── */
+    label: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#374151',
+        marginBottom: 6
+    },
+
+    input: {
+        height: 48,
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        fontSize: 15,
+        color: '#0f172a',
+        marginBottom: 16
+    },
+
+    /* ── Login Button ── */
+    loginBtn: {
+        height: 50,
+        backgroundColor: INDIGO,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+        marginBottom: 4
+    },
+
+    loginBtnPressed: {
+        backgroundColor: INDIGO_DARK
+    },
+
+    loginText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+        letterSpacing: 0.2
+    },
+
+    /* ── Forgot ── */
+    forgotWrap: {
+        alignItems: 'center',
+        paddingVertical: 12
+    },
+
+    forgotText: {
+        color: INDIGO,
+        fontSize: 13,
+        fontWeight: '500'
+    },
+
+    /* ── Divider ── */
+    dividerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16
+    },
+
+    line: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#e2e8f0'
+    },
+
+    dividerText: {
+        marginHorizontal: 12,
+        color: '#94a3b8',
+        fontSize: 13
+    },
+
+    /* ── Create Account Button ── */
+    registerBtn: {
+        height: 50,
+        backgroundColor: GREEN,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+
+    registerBtnPressed: {
+        backgroundColor: GREEN_DARK
+    },
+
+    registerText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+        letterSpacing: 0.2
+    }
 });
