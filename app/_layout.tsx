@@ -5,10 +5,11 @@ import { Slot, usePathname } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const INDIGO = "#4f46e5";
+
 function Header() {
   return (
     <View style={styles.header}>
-      {/* Logo */}
       <View style={styles.logoRow}>
         <View style={styles.logoIconWrap}>
           <View style={styles.boltTop} />
@@ -19,10 +20,19 @@ function Header() {
         </Text>
       </View>
 
-      {/* Assessment Portal badge */}
       <View style={styles.portalBadge}>
         <Text style={styles.portalText}>Assessment Portal</Text>
       </View>
+    </View>
+  );
+}
+
+function Footer() {
+  return (
+    <View style={styles.footer}>
+      <Text style={styles.footerText}>
+        © {new Date().getFullYear()} Dash Quiz • SNSU Capstone Project
+      </Text>
     </View>
   );
 }
@@ -32,18 +42,17 @@ function LayoutContent() {
   const isUserSection = pathname?.includes("user-folder");
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Header — fixed at top, only on auth screens */}
       {!isUserSection && <Header />}
 
-      <Slot />
+      {/* Content — fills all remaining space between header and footer */}
+      <View style={styles.content}>
+        <Slot />
+      </View>
 
-      {!isUserSection && (
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            © {new Date().getFullYear()} Dash Quiz • SNSU Capstone Project
-          </Text>
-        </View>
-      )}
+      {/* Footer — fixed at bottom, only on auth screens */}
+      {!isUserSection && <Footer />}
     </SafeAreaView>
   );
 }
@@ -58,10 +67,12 @@ export default function RootLayout() {
   );
 }
 
-const INDIGO = "#4f46e5";
-
 const styles = StyleSheet.create({
-  container: {
+  // SafeAreaView is a flex column by default:
+  // [Header] → [content flex:1] → [Footer]
+  // Header and footer sit at their natural height,
+  // content fills everything in between — no gaps, no overflow.
+  safeArea: {
     flex: 1,
     backgroundColor: "#f8fafc",
   },
@@ -87,14 +98,12 @@ const styles = StyleSheet.create({
   logoIconWrap: {
     width: 30,
     height: 30,
-    backgroundColor: INDIGO,
     borderRadius: 7,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
 
-  /* Simple lightning bolt: two offset rectangles */
   boltTop: {
     position: "absolute",
     top: 3,
@@ -128,7 +137,6 @@ const styles = StyleSheet.create({
     color: INDIGO,
   },
 
-  /* ── Assessment Portal badge ── */
   portalBadge: {
     borderWidth: 1,
     borderColor: "#e2e8f0",
@@ -144,19 +152,24 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
 
+  /* ── Content ── */
+  content: {
+    flex: 1,           // takes all space between header and footer
+    overflow: "hidden", // prevents content from bleeding out
+  },
+
   /* ── Footer ── */
+  // No position:'fixed' — flex column handles placement naturally.
+  // It always sits at the bottom because content above it has flex:1.
   footer: {
     backgroundColor: COLORS.primary,
-    position: 'fixed',
-    width: "100%",
-    left: 0,
-    bottom: 0,
+    alignItems: "center",
   },
 
   footerText: {
     color: "#fff",
     textAlign: "center",
-    padding: 10,
+    paddingVertical: 10,
     fontSize: 10,
   },
 });

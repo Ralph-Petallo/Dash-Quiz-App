@@ -6,7 +6,7 @@ import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Power icon drawn with pure RN views
+/* ── Power Icon ── */
 function PowerIcon() {
     return (
         <View style={powerStyles.wrap}>
@@ -17,12 +17,7 @@ function PowerIcon() {
 }
 
 const powerStyles = StyleSheet.create({
-    wrap: {
-        width: 18,
-        height: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+    wrap: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
     arc: {
         position: 'absolute',
         width: 14,
@@ -30,9 +25,7 @@ const powerStyles = StyleSheet.create({
         borderRadius: 7,
         borderWidth: 2,
         borderColor: '#fff',
-        // clip top gap via borderTopColor transparent
         borderTopColor: 'transparent',
-        transform: [{ rotate: '0deg' }],
     },
     stem: {
         position: 'absolute',
@@ -44,6 +37,7 @@ const powerStyles = StyleSheet.create({
     },
 });
 
+/* ── Sidebar ── */
 export default function Sidebar(props: any) {
     const router = useRouter();
 
@@ -67,16 +61,17 @@ export default function Sidebar(props: any) {
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+
+            {/* SCROLL AREA */}
             <DrawerContentScrollView
                 {...props}
-                contentContainerStyle={styles.drawerContent}
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* ── HEADER ── */}
+                {/* HEADER */}
                 <View style={styles.header}>
                     <View style={styles.logoIconWrap}>
-                        {/* Lightning bolt */}
                         <View style={styles.boltTop} />
                         <View style={styles.boltBottom} />
                     </View>
@@ -85,19 +80,16 @@ export default function Sidebar(props: any) {
                     </Text>
                 </View>
 
-                {/* ── MENU LABEL ── */}
+                {/* MENU */}
                 <Text style={styles.menuLabel}>MAIN MENU</Text>
-
-                {/* ── MENU ITEMS ── */}
-                <View style={styles.menuContainer}>
-                    <DrawerItemList {...props} />
-                </View>
+                <DrawerItemList {...props} />
             </DrawerContentScrollView>
 
-            {/* ── FOOTER ── */}
-            <SafeAreaView edges={['bottom']} style={styles.footer}>
+            {/* FOOTER (FIXED) */}
+            <View style={styles.footer}>
                 <View style={styles.footerBox}>
-                    {/* Avatar + info */}
+                    
+                    {/* USER */}
                     <View style={styles.footerLeft}>
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>U</Text>
@@ -108,7 +100,7 @@ export default function Sidebar(props: any) {
                         </View>
                     </View>
 
-                    {/* Logout power button */}
+                    {/* LOGOUT */}
                     <Pressable
                         onPress={handleLogout}
                         style={({ pressed }) => [
@@ -119,27 +111,28 @@ export default function Sidebar(props: any) {
                         <PowerIcon />
                     </Pressable>
                 </View>
-            </SafeAreaView>
-        </View>
+            </View>
+
+        </SafeAreaView>
     );
 }
 
+/* ── COLORS ── */
 const NAV_BG = '#1a1740';
-const ITEM_ACTIVE = 'rgba(99, 102, 241, 0.25)';
 const INDIGO = '#6366f1';
 
+/* ── STYLES ── */
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: NAV_BG,
     },
 
-    drawerContent: {
-        paddingTop: 0,
-        paddingHorizontal: 0,
+    scrollContent: {
+        paddingBottom: 10,
     },
 
-    /* ── Header ── */
+    /* HEADER */
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -195,7 +188,6 @@ const styles = StyleSheet.create({
         color: '#818cf8',
     },
 
-    /* ── Menu label ── */
     menuLabel: {
         fontSize: 10,
         fontWeight: '700',
@@ -206,17 +198,10 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
 
-    menuContainer: {
-        flex: 1,
-        paddingHorizontal: 10,
-    },
-
-    /* ── Footer ── */
+    /* FOOTER */
     footer: {
         borderTopWidth: 1,
         borderTopColor: 'rgba(255,255,255,0.07)',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
         backgroundColor: NAV_BG,
     },
 
@@ -224,6 +209,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
 
     footerLeft: {

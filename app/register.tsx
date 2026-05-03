@@ -102,7 +102,7 @@ export default function SignUpScreen() {
                     {/* Card */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Create account</Text>
-                        <Text style={styles.cardSubtitle}>Join Dash Quiz — i&apos;s free</Text>
+                        <Text style={styles.cardSubtitle}>Join Dash Quiz</Text>
 
                         {/* First + Last Name Row */}
                         <View style={styles.nameRow}>
@@ -110,7 +110,7 @@ export default function SignUpScreen() {
                                 <TextInput
                                     style={[styles.input, errors.firstName && styles.inputError]}
                                     placeholder="First name"
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor="grey"
                                     onChangeText={(t) => setForm({ ...form, firstName: t })}
                                     value={form.firstName}
                                 />
@@ -122,7 +122,7 @@ export default function SignUpScreen() {
                                 <TextInput
                                     style={[styles.input, errors.lastName && styles.inputError]}
                                     placeholder="Last name"
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor="grey"
                                     onChangeText={(t) => setForm({ ...form, lastName: t })}
                                     value={form.lastName}
                                 />
@@ -136,7 +136,7 @@ export default function SignUpScreen() {
                         <TextInput
                             style={[styles.input, styles.inputFull, errors.email && styles.inputError]}
                             placeholder="Email address"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="grey"
                             autoCapitalize="none"
                             keyboardType="email-address"
                             onChangeText={(t) => setForm({ ...form, email: t })}
@@ -148,7 +148,7 @@ export default function SignUpScreen() {
                         <TextInput
                             style={[styles.input, styles.inputFull, errors.password && styles.inputError]}
                             placeholder="Password"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="grey"
                             secureTextEntry
                             onChangeText={(t) => setForm({ ...form, password: t })}
                             value={form.password}
@@ -163,7 +163,7 @@ export default function SignUpScreen() {
                                 errors.confirmPassword && styles.inputError
                             ]}
                             placeholder="Confirm password"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor="grey"
                             secureTextEntry
                             onChangeText={(t) => setForm({ ...form, confirmPassword: t })}
                             value={form.confirmPassword}
@@ -213,8 +213,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 32,
+        justifyContent: 'center',
         alignItems: 'center'
     },
 
@@ -301,7 +300,7 @@ const styles = StyleSheet.create({
     /* ── Inputs ── */
     input: {
         height: 48,
-        backgroundColor: '#fafafa',
+        backgroundColor: '#fff',
         borderRadius: 10,
         paddingHorizontal: 14,
         fontSize: 15,
@@ -330,12 +329,11 @@ const styles = StyleSheet.create({
     /* ── Button ── */
     submitBtn: {
         width: '100%',
-        height: 50,
+        height: 48,
         backgroundColor: INDIGO,
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 6
     },
 
     submitBtnPressed: {
