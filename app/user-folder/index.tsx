@@ -1,7 +1,8 @@
 import useAuth from "@/hooks/useAuth";
 import useData from "@/hooks/useData";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     Image,
@@ -15,15 +16,14 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PURPLE = "#6366f1";
-const GOLD = "#fbbf24";
-const SILVER = "#cbd5e1";
-const BRONZE = "#d4956a";
-const AVATAR_BASE = "https://www.google.com/imgres?q=men&imgurl=https%3A%2F%2Fstatic.vecteezy.com%2Fsystem%2Fresources%2Fthumbnails%2F005%2F346%2F410%2Fsmall%2Fclose-up-portrait-of-smiling-handsome-young-caucasian-man-face-looking-at-camera-on-isolated-light-gray-studio-background-photo.jpg&imgrefurl=https%3A%2F%2Fwww.vecteezy.com%2Ffree-photos%2Fmen&docid=6cuNWOe8_OZ-yM&tbnid=ZmWcse0p0zXFyM&vet=12ahUKEwjerZPrv5qUAxUszzgGHYp9OG4QnPAOegQIHhAB..i&w=525&h=350&hcb=2&ved=2ahUKEwjerZPrv5qUAxUszzgGHYp9OG4QnPAOegQIHhAB";
-const FALLBACK = "https://i.pravatar.cc/100";
+const GOLD_COLOR = "#fbbf24";
+const SILVER_COLOR = "#cbd5e1";
+const BRONZE_COLOR = "#c98c64";
+const AVATAR_BASE = 'https://dashquiz.ralphcabanero.com/storage/images/profiles/';
 
-const getAvatar = (p?: string) => (p ? `${AVATAR_BASE}${p}` : FALLBACK);
+const getAvatar = (img?: string) => (img ? `${AVATAR_BASE}${img}` : `${AVATAR_BASE}default.png`);
 
-const MEDAL_COLORS = [GOLD, SILVER, BRONZE];
+const MEDAL_COLORS = [GOLD_COLOR, SILVER_COLOR, BRONZE_COLOR];
 const MEDAL_ICONS = ["🥇", "🥈", "🥉"];
 const PODIUM_HEIGHTS = [90, 64, 50];
 const AVATAR_SIZES = [60, 48, 42];
@@ -60,6 +60,7 @@ const PodiumItem = ({ item, index }: { item: any; index: number }) => {
 
             <Text style={lb.podiumScore}>{item.score}/10</Text>
 
+            {/* the bar hehe */}
             <View style={[lb.podiumBar, { height, backgroundColor: color }]} />
         </View>
     );
@@ -92,36 +93,53 @@ const RankBadge = ({ rank }: { rank: number | null }) => (
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LeaderboardScreen() {
-    const { leaders, fetchLeaderboard, loading } = useData();
+    const { leaders, fetchLeaderboard, loadingLeaderboard } = useData();
     const { user } = useAuth();
     const [search, setSearch] = useState("");
     const fade = useRef(new Animated.Value(0)).current;
 
-    useEffect(() => {
-        fetchLeaderboard();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchLeaderboard();
+        }, [fetchLeaderboard])
+    );
 
     useEffect(() => {
-        if (!loading) {
-            Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        if (!loadingLeaderboard && leaders.length > 0) {
+            fade.setValue(0); // reset first
+
+            Animated.timing(fade, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }).start();
         }
-    }, [loading]);
+    }, [loadingLeaderboard, leaders.length, fade]);
 
+    // ─── SORT FIRST (IMPORTANT) ───
+    const sorted = useMemo(() => {
+        return [...leaders].sort((a, b) => b.score - a.score);
+    }, [leaders]);
+
+    // ─── SEARCH FILTER ───
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return leaders.filter(
+
+        return sorted.filter(
             (l) =>
                 l.name.toLowerCase().includes(q) ||
                 l.quiz_title.toLowerCase().includes(q)
         );
-    }, [search, leaders]);
+    }, [search, sorted]);
 
-    // Podium: 2nd, 1st, 3rd
-    const top3 = leaders.slice(0, 3);
+    // ─── PODIUM + LIST ALIGNMENT ───
+    const top3 = filtered.slice(0, 3);
+    const listData = filtered.slice(3, 10);
+
     const podium = [top3[1], top3[0], top3[2]].filter(Boolean);
 
-    // Current user rank
-    const myRank = leaders.findIndex((l) => l.isYou);
+    // ─── USER RANK ───
+    const myRank = filtered.findIndex((l) => l.isYou);
     const myRankDisplay = myRank >= 0 ? myRank + 1 : null;
 
     const greeting = () => {
@@ -131,10 +149,10 @@ export default function LeaderboardScreen() {
         return "Good evening";
     };
 
-    if (loading) {
+    if (loadingLeaderboard) {
         return (
             <View style={lb.center}>
-                <Ionicons name="trophy-outline" size={32} color={PURPLE} />
+                <Ionicons name="trophy" size={32} color={PURPLE} />
             </View>
         );
     }
@@ -145,8 +163,12 @@ export default function LeaderboardScreen() {
 
                 {/* Welcome */}
                 <View style={lb.welcome}>
-                    <Text style={lb.welcomeGreeting}>{greeting()}, {user?.full_name ?? "there"} 👋</Text>
-                    <Text style={lb.welcomeSub}>See how you stack up against everyone else.</Text>
+                    <Text style={lb.welcomeGreeting}>
+                        {greeting()}, {user?.full_name ?? "there"} 👋
+                    </Text>
+                    <Text style={lb.welcomeSub}>
+                        See how you stack up against everyone else.
+                    </Text>
                 </View>
 
                 {/* Header */}
@@ -155,7 +177,9 @@ export default function LeaderboardScreen() {
                         <Ionicons name="bar-chart-outline" size={20} color={PURPLE} />
                         <View>
                             <Text style={lb.headerTitle}>Leaderboard</Text>
-                            <Text style={lb.headerSub}>{leaders.length} participants this week</Text>
+                            <Text style={lb.headerSub}>
+                                {leaders.length} participants this week
+                            </Text>
                         </View>
                     </View>
                     <RankBadge rank={myRankDisplay} />
@@ -173,48 +197,56 @@ export default function LeaderboardScreen() {
                     />
                 </View>
 
-                {/* Podium */}
-                {top3.length >= 2 && (
+                {/* ─── PODIUM ─── */}
+                {top3.length > 0 && (
                     <View style={lb.podiumWrap}>
                         {podium.map((item, i) => (
-                            <PodiumItem key={item?.user_id ?? i} item={item} index={i === 0 ? 1 : i === 1 ? 0 : 2} />
+                            <PodiumItem
+                                key={`${item.user_id}-${i}`}
+                                item={item}
+                                index={i === 0 ? 1 : i === 1 ? 0 : 2}
+                            />
                         ))}
                     </View>
                 )}
 
-                {/* List */}
+                {/* ─── LIST (4–10) ─── */}
                 <View style={lb.list}>
-                    {filtered.map((item, i) => (
-                        <View
-                            key={item.user_id}
-                            style={[lb.row, item.isYou && lb.rowHighlight]}
-                        >
-                            {/* Rank */}
-                            {i < 3 ? (
-                                <Text style={lb.rankNum}>{MEDAL_ICONS[i]}</Text>
-                            ) : (
-                                <Text style={lb.rankNum}>{i + 1}</Text>
-                            )}
+                    {listData.map((item) => {
+                        const rank = filtered.indexOf(item) + 1;
 
-                            {/* Avatar */}
-                            <Image
-                                source={{ uri: getAvatar(item.profile_photo) }}
-                                style={lb.avatar}
-                            />
+                        return (
+                            <View
+                                key={`${item.user_id}-${item.id}`}
+                                style={[lb.row, item.isYou && lb.rowHighlight]}
+                            >
+                                {/* Rank */}
+                                <Text style={lb.rankNum}>{rank}</Text>
 
-                            {/* Info */}
-                            <View style={lb.info}>
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                                    <Text style={lb.name} numberOfLines={1}>{item.name}</Text>
-                                    {item.isYou && <YouBadge />}
+                                {/* Avatar */}
+                                <Image
+                                    source={{ uri: getAvatar(item.profile_photo) }}
+                                    style={lb.avatar}
+                                />
+
+                                {/* Info */}
+                                <View style={lb.info}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                        <Text style={lb.name} numberOfLines={1}>
+                                            {item.name}
+                                        </Text>
+                                        {item.isYou && <YouBadge />}
+                                    </View>
+                                    <Text style={lb.quizTitle} numberOfLines={1}>
+                                        {item.quiz_title}
+                                    </Text>
                                 </View>
-                                <Text style={lb.quizTitle} numberOfLines={1}>{item.quiz_title}</Text>
-                            </View>
 
-                            {/* Score ring */}
-                            <ScoreRing score={item.score} />
-                        </View>
-                    ))}
+                                {/* Score */}
+                                <ScoreRing score={item.score} />
+                            </View>
+                        );
+                    })}
 
                     {filtered.length === 0 && (
                         <Text style={lb.empty}>No results found.</Text>

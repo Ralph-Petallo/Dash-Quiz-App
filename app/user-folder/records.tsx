@@ -1,6 +1,7 @@
-import { DataContext } from '@/store/dataStore';
+import useData from '@/hooks/useData';
+import { RecordItem } from '@/store/dataStore';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
     Modal,
@@ -11,16 +12,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type RecordItem = {
-    quiz_id: number;
-    score: number;
-    quiz_title: string;
-    quiz_description: string;
-    created_at: string;
-};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -130,7 +121,7 @@ const DetailModal = ({ record, onClose }: { record: RecordItem | null; onClose: 
     if (!record) return null;
 
     const pass = record.score >= PASS_THRESHOLD;
-    const accuracy = Math.round((record.score / 10) * 100);
+    const accuracy = Math.round((record.score / record.total_questions) * 100);
 
     return (
         <Modal transparent animationType="fade" onRequestClose={onClose}>
@@ -186,7 +177,7 @@ const DetailModal = ({ record, onClose }: { record: RecordItem | null; onClose: 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function RecordsPage() {
-    const { records, loading } = useContext(DataContext);
+    const { records, loadingStats: loading } = useData();
 
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<RecordItem | null>(null);

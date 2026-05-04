@@ -7,7 +7,10 @@ import { Drawer } from 'expo-router/drawer';
 import { useEffect } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-type IconProps = { color: string; size: number }
+type IconProps = { color: string; size: number };
+
+const NAV_BG = '#1a1740';
+const INDIGO = '#6366f1';
 
 export default function Layout() {
     const { user, loading } = useAuth();
@@ -15,55 +18,63 @@ export default function Layout() {
     const router = useRouter();
 
     const hideHeader =
-        pathname.startsWith('/quiz') ||
-        pathname.includes('quiz/');
+        pathname.startsWith('/quiz') || pathname.includes('quiz/');
 
-    // ✅ AUTH GUARD
     useEffect(() => {
         if (!loading && !user) {
-            router.replace('/login'); // adjust if your route is different
+            router.replace('/login');
         }
     }, [user, loading, router]);
 
-    // ✅ PREVENT FLICKER
-    if (loading || !user) {
-        return null; // or splash screen
-    }
+    if (loading || !user) return null;
 
     return (
         <Drawer
             drawerContent={(props: any) => <Sidebar {...props} />}
             screenOptions={{
+                /* ── Drawer panel ── */
                 drawerStyle: {
-                    backgroundColor: COLORS.dark,
+                    backgroundColor: NAV_BG,
                     width: 250,
+                }, headerStatusBarHeight: 0,
+
+                /* ── Item colors ── */
+                drawerActiveTintColor: '#ffffff',
+                drawerActiveBackgroundColor: 'rgba(99, 102, 241, 0.25)',
+                drawerInactiveTintColor: '#94a3b8',
+                drawerInactiveBackgroundColor: 'transparent',
+                drawerItemStyle: {
+                    borderRadius: 10,
+                    marginVertical: 2,
+                    paddingVertical: 2,
+                    paddingHorizontal: 4,
+                },
+                drawerLabelStyle: {
+                    fontSize: 15,
+                    fontWeight: '500',
+                    marginLeft: 10,
                 },
 
+                /* ── Header ── */
                 headerShown: !hideHeader,
                 headerStyle: {
-                    backgroundColor: COLORS.primary,
-                    elevation: 0,
+                    backgroundColor: '#1a1740',
+                    height: 56,
                     shadowOpacity: 0,
+                    borderBottomWidth: 1,
                 },
                 headerTintColor: '#fff',
-                drawerActiveTintColor: '#fff',
-                drawerActiveBackgroundColor: COLORS.primary,
-                drawerInactiveTintColor: COLORS.textLight,
-                drawerLabelStyle: {
-                    marginLeft: -10,
-                    fontWeight: '600',
-                },
 
+                /* ── Header left: hamburger is auto, tintColor makes it white ── */
+
+                /* ── Header right: user info + avatar ── */
                 headerRight: hideHeader
                     ? () => null
                     : () => (
-                        <View style={styles.headerContainer}>
-                            <View style={styles.textContainer}>
-                                <Text style={styles.nameText} numberOfLines={1}>
+                        <View style={styles.headerRight}>
+                            <View style={styles.headerTextWrap}>
+                                <Text style={styles.headerName} numberOfLines={1}>
                                     {user.full_name}
-                                </Text>
-                                <Text style={styles.statusText}>
-                                    Online
                                 </Text>
                             </View>
                             <Image
@@ -72,10 +83,11 @@ export default function Layout() {
                                         ? user.profile_photo
                                         : 'https://i.pravatar.cc/100',
                                 }}
-                                style={styles.avatar}
+                                style={styles.headerAvatar}
                             />
                         </View>
                     ),
+
             }}
         >
             <Drawer.Screen
@@ -123,33 +135,78 @@ export default function Layout() {
 }
 
 const styles = StyleSheet.create({
-    headerContainer: {
+    /* ── Header title ── */
+    headerTitle: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'flex-end',
-        marginRight: 15,
-        gap: 10,
+        gap: 8,
     },
-    textContainer: {
-        alignItems: 'flex-end',
+    headerLogoWrap: {
+        width: 26,
+        height: 26,
+        backgroundColor: INDIGO,
+        borderRadius: 6,
+        alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
     },
-    nameText: {
-        color: 'white',
+    boltTop: {
+        position: 'absolute',
+        top: 2,
+        left: 7,
+        width: 8,
+        height: 11,
+        backgroundColor: '#fff',
+        borderRadius: 2,
+        transform: [{ rotate: '20deg' }, { skewX: '-12deg' }],
+    },
+    boltBottom: {
+        position: 'absolute',
+        bottom: 2,
+        left: 11,
+        width: 8,
+        height: 11,
+        backgroundColor: '#fff',
+        borderRadius: 2,
+        transform: [{ rotate: '20deg' }, { skewX: '-12deg' }],
+    },
+    headerLogoText: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#ffffff',
+        letterSpacing: 1.2,
+    },
+    headerLogoAccent: {
+        color: '#818cf8',
+    },
+
+    /* ── Header right ── */
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginRight: 16,
+    },
+    headerTextWrap: {
+        alignItems: 'flex-end',
+    },
+    headerName: {
+        color: '#ffffff',
         fontWeight: '700',
-        fontSize: 14,
+        fontSize: 13,
         maxWidth: 120,
     },
-    statusText: {
+    headerStatus: {
         color: COLORS.online,
         fontSize: 10,
         marginTop: 2,
+        fontWeight: '500',
     },
-    avatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
+    headerAvatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.2)',
     },
 });

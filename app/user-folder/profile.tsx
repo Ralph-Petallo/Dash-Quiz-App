@@ -1,24 +1,27 @@
+import DeleteAccountModal from '@/components/DeleteAccountModal';
+import EditProfileModal from '@/components/EditProfileModal';
 import useAuth from '@/hooks/useAuth';
 import useData from '@/hooks/useData';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
+import { uploadProfilePhoto } from '@/store/profileStore';
+import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PURPLE = '#6366f1';
-const AVATAR_BASE = 'http://YOUR_IP:8000/storage/images/profiles/';
-
-// ─── Info Row ─────────────────────────────────────────────────────────────────
+const AVATAR_BASE = 'https://dashquiz.ralphcabanero.com/storage/images/profiles/';
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <View style={s.infoRow}>
@@ -30,9 +33,22 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { user } = useAuth();
-  const { stats } = useData();
+  const { user, setUser, fetchUser } = useAuth();
+  const { stats, fetchStats } = useData();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const [editVisible, setEditVisible] = useState(false);
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  // ✅ REFRESH STATS EVERY TIME SCREEN IS FOCUSED
+  useFocusEffect(
+    useCallback(() => {
+      fetchStats();
+      fetchUser();
+    }, [fetchStats, fetchUser])
+  );
 
   useEffect(() => {
     if (user) {
@@ -53,9 +69,9 @@ export default function ProfilePage() {
   }
 
   const avatarUri =
-    user.profile_photo && user.profile_photo !== 'default.png'
+    user.profile_photo
       ? `${AVATAR_BASE}${user.profile_photo}`
-      : 'https://i.pravatar.cc/100';
+      : `${AVATAR_BASE}default.png`;
 
   const dateJoined = user.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
@@ -65,52 +81,107 @@ export default function ProfilePage() {
     })
     : '—';
 
-  const quizzesTaken = stats?.total_quizzes ?? user.quizzes_taken ?? '—';
+  const quizzesTaken = stats?.completed_quizzes ?? user.quizzes_taken ?? '—';
+
+  const averageScore =
+    stats?.average_score != null
+      ? `${Math.round(stats.average_score)}%`
+      : '—';
+
+  // ── Avatar picker ─────────────────────────────────────────────────────────
+
+  const handlePickAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow access to your photo library.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+
+    setPhotoUploading(true);
+    try {
+      const { profile_photo } = await uploadProfilePhoto(asset.uri, mimeType);
+      setUser((prev: any) => ({ ...prev, profile_photo }));
+    } catch {
+      Alert.alert('Upload failed', 'Could not update your profile photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleProfileSaved = (updatedUser: Record<string, any>) => {
+    setUser((prev: any) => ({ ...prev, ...updatedUser }));
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
-      >
+      <ScrollView contentContainerStyle={s.scroll}>
+
         <Animated.View style={[s.card, { opacity: fadeAnim }]}>
 
-          {/* ── Avatar ── */}
-          <View style={s.avatarWrap}>
+          {/* Avatar */}
+          <TouchableOpacity onPress={handlePickAvatar} disabled={photoUploading}>
             <View style={s.avatarRing}>
               <Image source={{ uri: avatarUri }} style={s.avatar} />
             </View>
-            <View style={s.cameraBadge}>
-              <Ionicons name="camera" size={11} color="#fff" />
-            </View>
-          </View>
+          </TouchableOpacity>
 
-          {/* ── Name & Email ── */}
+          {/* Name */}
           <Text style={s.name}>{user.first_name}</Text>
           <Text style={s.email}>{user.email}</Text>
 
-          {/* ── Info rows ── */}
+          {/* Info */}
           <View style={s.infoBox}>
             <InfoRow label="DATE JOINED" value={dateJoined} />
             <View style={s.rowSep} />
             <InfoRow label="QUIZZES TAKEN" value={String(quizzesTaken)} />
+            <View style={s.rowSep} />
+            <InfoRow label="AVERAGE SCORE" value={averageScore} />
           </View>
 
-          {/* ── Buttons ── */}
+          {/* Buttons */}
           <View style={s.btnRow}>
-            <TouchableOpacity style={s.btnEdit} activeOpacity={0.85}>
-              <Ionicons name="pencil-outline" size={14} color="#fff" />
+            <TouchableOpacity onPress={() => setEditVisible(true)} style={s.btnEdit}>
               <Text style={s.btnEditText}>Edit Profile</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.btnDelete} activeOpacity={0.75}>
-              <Ionicons name="trash-outline" size={14} color="#ef4444" />
-              <Text style={s.btnDeleteText}>Delete Account</Text>
+            <TouchableOpacity onPress={() => setDeleteVisible(true)} style={s.btnDelete}>
+              <Text style={s.btnDeleteText}>Delete</Text>
             </TouchableOpacity>
           </View>
 
         </Animated.View>
+
       </ScrollView>
+
+      <EditProfileModal
+        visible={editVisible}
+        onClose={() => setEditVisible(false)}
+        onSaved={handleProfileSaved}
+        initialData={{
+          first_name: user.first_name ?? '',
+          last_name: user.last_name ?? '',
+          email: user.email ?? '',
+        }}
+      />
+
+      <DeleteAccountModal
+        visible={deleteVisible}
+        onClose={() => setDeleteVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -153,6 +224,7 @@ const s = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
+  cameraBadgeUploading: { backgroundColor: '#22c55e' },
 
   // Name & Email
   name: { fontSize: 20, fontWeight: '800', color: '#0f172a', marginBottom: 3 },
@@ -169,27 +241,10 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f0edff',
   },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  infoLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#94a3b8',
-    letterSpacing: 0.8,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  rowSep: {
-    height: 1,
-    backgroundColor: '#f0edff',
-  },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  infoLabel: { fontSize: 10, fontWeight: '700', color: '#94a3b8', letterSpacing: 0.8 },
+  infoValue: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  rowSep: { height: 1, backgroundColor: '#f0edff' },
 
   // Buttons
   btnRow: { flexDirection: 'row', gap: 10, width: '100%' },
@@ -204,7 +259,6 @@ const s = StyleSheet.create({
     borderRadius: 12,
   },
   btnEditText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
   btnDelete: {
     flex: 1,
     flexDirection: 'row',
