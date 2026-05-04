@@ -3,18 +3,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 
 type User = {
+    id: number;
     full_name: string;
-    first_name:string;
-    last_name:string;
+    first_name: string;
+    last_name: string;
     email: string;
     profile_photo?: string;
-    created_at:string;
-    quizzes_taken?:number|string;
+    created_at: string;
+    quizzes_taken?: number | string;
 };
 
 type AuthContextType = {
     user: User | null;
     loading: boolean;
+    setUser: React.Dispatch<React.SetStateAction<User | null>>;
     fetchUser: () => Promise<void>;
     logout: () => Promise<void>;
 };
@@ -22,8 +24,9 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
-    fetchUser: async () => {},
-    logout: async () => {},
+    setUser: () => { },
+    fetchUser: async () => { },
+    logout: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -63,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await logout();
             }
         } finally {
-            setLoading(false); // 🔥 VERY IMPORTANT
+            setLoading(false);
         }
     }, [logout]);
 
@@ -72,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [fetchUser]);
 
     return (
-        <AuthContext.Provider value={{ user, loading, fetchUser, logout }}>
+        <AuthContext.Provider value={{ user, setUser, loading, fetchUser, logout }}>
             {children}
         </AuthContext.Provider>
     );

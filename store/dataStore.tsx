@@ -32,12 +32,14 @@ export type UserStats = {
 export type RecordItem = {
     quiz_id: number;
     score: number;
+    total_questions: number;
     quiz_title: string;
     quiz_description: string;
     created_at: string;
 };
 
 export type Leader = {
+    id: string;
     name: string;
     score: number;
     profile_photo?: string;
@@ -51,15 +53,19 @@ export type DataContextType = {
     quizzes: Quiz[];
     stats: UserStats | null;
     records: RecordItem[];
-    leaders: Leader[]; // ✅ NEW
+    leaders: Leader[];
 
-    loading: boolean;
+    loadingQuizzes: boolean;
+    loadingStats: boolean;
+    loadingLeaderboard: boolean;
+
     error: string | null;
 
+    onQuizCompleted: (quizId: number, data: Partial<Quiz>) => Promise<void>;
     fetchQuizzes: () => Promise<void>;
     fetchStats: () => Promise<void>;
     fetchRecords: () => Promise<void>;
-    fetchLeaderboard: () => Promise<void>; // ✅ NEW
+    fetchLeaderboard: () => Promise<void>;
 
     updateQuizData: (quizId: number, data: Partial<Quiz>) => void;
     refetchAll: () => Promise<void>;
@@ -73,16 +79,20 @@ export const DataContext = createContext<DataContextType>({
     records: [],
     leaders: [],
 
-    loading: false,
+    loadingQuizzes: false,
+    loadingStats: false,
+    loadingLeaderboard: false,
+
     error: null,
 
-    fetchQuizzes: async () => {},
-    fetchStats: async () => {},
-    fetchRecords: async () => {},
-    fetchLeaderboard: async () => {},
+    onQuizCompleted: async () => { },
+    fetchQuizzes: async () => { },
+    fetchStats: async () => { },
+    fetchRecords: async () => { },
+    fetchLeaderboard: async () => { },
 
-    updateQuizData: () => {},
-    refetchAll: async () => {},
+    updateQuizData: () => { },
+    refetchAll: async () => { },
 });
 
 /* ───────────────────────── PROVIDER ───────────────────────── */
@@ -95,7 +105,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [records, setRecords] = useState<RecordItem[]>([]);
     const [leaders, setLeaders] = useState<Leader[]>([]);
 
-    const [loading, setLoading] = useState(false);
+    const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+    const [loadingStats, setLoadingStats] = useState(false);
+    const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
     const [error, setError] = useState<string | null>(null);
 
     const { user } = useContext(AuthContext);
@@ -103,7 +116,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     /* ───────── QUIZZES ───────── */
     const fetchQuizzes = useCallback(async () => {
         try {
-            setLoading(true);
+            setLoadingQuizzes(true);
+
             const res = await api.get('/quizzes');
             const data = res.data.data || [];
 
@@ -112,20 +126,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 total_questions: quiz.questions ? quiz.questions.length : 10,
                 icons: icons[i % icons.length],
             }));
+            console.log(enriched)
 
             setQuizzes(enriched);
+        } catch (e) {
+            console.log(e);
         } finally {
-            setLoading(false);
+            setLoadingQuizzes(false);
         }
     }, []);
 
     /* ───────── STATS ───────── */
     const fetchStats = useCallback(async () => {
         try {
+            setLoadingStats(true);
+
             const res = await api.get('/stats');
             setStats(res.data.data);
         } catch (e) {
             console.log(e);
+        } finally {
+            setLoadingStats(false);
         }
     }, []);
 
@@ -139,32 +160,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    /* ───────── LEADERBOARD (FIXED) ───────── */
+    /* ───────── LEADERBOARD ───────── */
     const fetchLeaderboard = useCallback(async () => {
         try {
-            setLoading(true);
+            setLoadingLeaderboard(true);
 
             const res = await api.get('/dashboard/leaderboard');
             const data = res.data.data || [];
 
-            const seen = new Set<number>();
+            const mapped = data.map((item: any, index: number) => ({
+                ...item,
+                id: `${item.user_id}-${index}`,
+                isYou: item.user_id === user?.id,
+            }));
 
-            const unique = data
-                .filter((item: any) => {
-                    if (seen.has(item.user_id)) return false;
-                    seen.add(item.user_id);
-                    return true;
-                })
-                .map((item: any) => ({
-                    ...item,
-                    isYou: item.name === user?.full_name,
-                }));
-
-            setLeaders(unique);
+            setLeaders(mapped);
         } catch (e) {
             console.log('Leaderboard error:', e);
         } finally {
-            setLoading(false);
+            setLoadingLeaderboard(false);
         }
     }, [user]);
 
@@ -172,10 +186,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const updateQuizData = useCallback((quizId: number, data: Partial<Quiz>) => {
         setQuizzes(prev =>
             prev.map(q =>
-                q.id === quizId ? { ...q, ...data, completed: true } : q
+                q.id === quizId
+                    ? { ...q, ...data, completed: true }
+                    : q
             )
         );
     }, []);
+
+    /* ───────── QUIZ COMPLETED ───────── */
+    const onQuizCompleted = useCallback(async (quizId: number, data: Partial<Quiz>) => {
+        updateQuizData(quizId, data);
+
+        await Promise.allSettled([
+            fetchStats(),
+            fetchRecords(),
+            fetchLeaderboard(),
+        ]);
+    }, [updateQuizData, fetchStats, fetchRecords, fetchLeaderboard]);
 
     /* ───────── REFRESH ALL ───────── */
     const refetchAll = useCallback(async () => {
@@ -215,7 +242,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 records,
                 leaders,
 
-                loading,
+                loadingQuizzes,
+                loadingStats,
+                loadingLeaderboard,
+
                 error,
 
                 fetchQuizzes,
@@ -224,6 +254,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 fetchLeaderboard,
 
                 updateQuizData,
+                onQuizCompleted,
                 refetchAll,
             }}
         >
