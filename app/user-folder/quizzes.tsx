@@ -86,14 +86,15 @@ export default function QuizDashboard() {
                     <Text style={styles.emptyText}>No quizzes available</Text>
                 </View>
             ) : (
-                quizzes.map((quiz: any) => (
+                quizzes.map((quiz: any, index) => (
                     <TouchableOpacity
                         key={quiz.id}
                         style={styles.card}
                         activeOpacity={0.7}
-                        onPress={() =>
-                            router.replace(`/quiz/${quiz.id}`)
-                        }
+                        onPress={() => router.replace({
+                            pathname: "/quiz/[id]",
+                            params: { id: quiz.id }
+                        })}
                     >
                         <View style={styles.cardContent}>
                             {/* Left icon */}
