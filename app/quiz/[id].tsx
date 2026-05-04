@@ -1,4 +1,4 @@
-// screens/QuizScreen.tsx
+import useData from '@/hooks/useData';
 import api from "@/services/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -14,6 +14,8 @@ import {
 export default function QuizScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+
+    const { onQuizCompleted } = useData();
 
     const [quiz, setQuiz] = useState<any>(null);
     const [questions, setQuestions] = useState<any[]>([]);
@@ -59,7 +61,7 @@ export default function QuizScreen() {
             if (!isLast) {
                 setCurrentIndex((prev) => prev + 1)
             } else {
-                finishQuiz(nextScore)
+                await finishQuiz(nextScore)
             }
         } catch (e) {
             console.error("Answer submit error:", e)
@@ -74,6 +76,8 @@ export default function QuizScreen() {
                 quiz_id: Number(id),
                 score: finalScore,
             })
+            // refresh leaderboard + stats + records + mark quiz complete locally
+            await onQuizCompleted(Number(id), { completed: true });
         } catch (e) {
             console.error("Result submit error:", e)
         } finally {
@@ -82,6 +86,7 @@ export default function QuizScreen() {
                 params: {
                     score: finalScore,
                     total: questions.length,
+                    quizId: id ?? '',
                 },
             })
         }

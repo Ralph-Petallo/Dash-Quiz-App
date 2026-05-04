@@ -1,20 +1,21 @@
 // screens/quiz-result.tsx
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react';
 import {
     Animated,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-} from 'react-native'
+} from 'react-native';
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function QuizResultScreen() {
     const router = useRouter()
     const { score, total, quizId } = useLocalSearchParams()
+    const justId = Array.isArray(quizId) ? quizId[0] : quizId;
 
     const parsedScore = Number(score)
     const parsedTotal = Number(total)
@@ -77,7 +78,10 @@ export default function QuizResultScreen() {
 
                     <TouchableOpacity
                         style={s.btnSecondary}
-                        onPress={() => router.replace(`./quiz/${quizId}`)}
+                        onPress={() => router.replace({
+                            pathname: "/quiz/[id]",
+                            params: { id: justId }
+                        })}
                         activeOpacity={0.85}
                     >
                         <Text style={s.btnSecondaryText}>Try Again</Text>
@@ -88,6 +92,7 @@ export default function QuizResultScreen() {
         </SafeAreaView>
     )
 }
+
 const PURPLE = '#4b32a8'
 
 const s = StyleSheet.create({
