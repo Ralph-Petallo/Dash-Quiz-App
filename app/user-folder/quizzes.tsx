@@ -140,7 +140,8 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         paddingBottom: 32,
-        backgroundColor: COLORS.bg,
+        height: '100%',
+        backgroundColor: "#F8FAFC",
     },
 
     centered: {
@@ -161,7 +162,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
-        borderRadius: 14,
         padding: 16,
         marginBottom: 20,
         shadowColor: '#6366f1',
