@@ -5,20 +5,19 @@ import React, {
     useCallback,
     useContext,
     useEffect,
-    useState
+    useState,
 } from 'react';
 
-/* ───────────────────────── TYPES ───────────────────────── */
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Quiz = {
     id: number;
     title: string;
     description?: string;
-    questions?: any[];
     total_questions?: number;
+    questions_count?: number;
     icons?: string;
     difficulty?: string;
-    attempts?: number;
     completed?: boolean;
 };
 
@@ -30,12 +29,16 @@ export type UserStats = {
 };
 
 export type RecordItem = {
+    id?: number;
     quiz_id: number;
     score: number;
     total_questions: number;
+    percentage?: number;
+    passed?: boolean;
     quiz_title: string;
-    quiz_description: string;
+    quiz_description?: string;
     created_at: string;
+    elapsed_time?: number;
 };
 
 export type Leader = {
@@ -54,11 +57,10 @@ export type DataContextType = {
     stats: UserStats | null;
     records: RecordItem[];
     leaders: Leader[];
-
     loadingQuizzes: boolean;
     loadingStats: boolean;
     loadingLeaderboard: boolean;
-
+    loadingRecords: boolean;
     error: string | null;
 
     onQuizCompleted: (quizId: number, data: Partial<Quiz>) => Promise<void>;
@@ -66,40 +68,40 @@ export type DataContextType = {
     fetchStats: () => Promise<void>;
     fetchRecords: () => Promise<void>;
     fetchLeaderboard: () => Promise<void>;
-
     updateQuizData: (quizId: number, data: Partial<Quiz>) => void;
     refetchAll: () => Promise<void>;
 };
 
-/* ───────────────────────── CONTEXT ───────────────────────── */
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 export const DataContext = createContext<DataContextType>({
     quizzes: [],
     stats: null,
     records: [],
     leaders: [],
-
     loadingQuizzes: false,
     loadingStats: false,
     loadingLeaderboard: false,
-
+    loadingRecords: false,
     error: null,
-
     onQuizCompleted: async () => { },
     fetchQuizzes: async () => { },
     fetchStats: async () => { },
     fetchRecords: async () => { },
     fetchLeaderboard: async () => { },
-
     updateQuizData: () => { },
     refetchAll: async () => { },
 });
 
-/* ───────────────────────── PROVIDER ───────────────────────── */
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
-const icons = ['💻', '🖥️', '⚙️', '📱', '🔧', '🎯'];
+const ICONS = ['💻', '🖥️', '⚙️', '📱', '🔧', '🎯'];
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
+    const { user } = useContext(AuthContext);
+
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
     const [stats, setStats] = useState<UserStats | null>(null);
     const [records, setRecords] = useState<RecordItem[]>([]);
@@ -108,95 +110,93 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [loadingStats, setLoadingStats] = useState(false);
     const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
-
+    const [loadingRecords, setLoadingRecords] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const { user } = useContext(AuthContext);
+    // ─── Quizzes ──────────────────────────────────────────────────────────────
 
-    /* ───────── QUIZZES ───────── */
     const fetchQuizzes = useCallback(async () => {
         try {
             setLoadingQuizzes(true);
-
             const res = await api.get('/quizzes');
             const data = res.data.data || [];
 
-            const enriched = data.map((quiz: Quiz, i: number) => ({
-                ...quiz,
-                total_questions: quiz.questions ? quiz.questions.length : 10,
-                icons: icons[i % icons.length],
-            }));
-            console.log(enriched)
-
-            setQuizzes(enriched);
+            setQuizzes(
+                data.map((quiz: any, i: number) => ({
+                    ...quiz,
+                    icons: ICONS[i % ICONS.length],
+                }))
+            );
         } catch (e) {
-            console.log(e);
+            console.error('Quiz fetch error:', e);
+            setError('Failed to load quizzes');
         } finally {
             setLoadingQuizzes(false);
         }
     }, []);
 
-    /* ───────── STATS ───────── */
+    // ─── Stats ────────────────────────────────────────────────────────────────
+
     const fetchStats = useCallback(async () => {
         try {
             setLoadingStats(true);
-
             const res = await api.get('/stats');
-            setStats(res.data.data);
+            setStats(res.data.data || null);
         } catch (e) {
-            console.log(e);
+            console.error('Stats fetch error:', e);
         } finally {
             setLoadingStats(false);
         }
     }, []);
 
-    /* ───────── RECORDS ───────── */
+    // ─── Records ──────────────────────────────────────────────────────────────
+
     const fetchRecords = useCallback(async () => {
         try {
+            setLoadingRecords(true);
             const res = await api.get('/records');
-            setRecords(res.data.results || []);
+            setRecords(res.data.data || res.data.results || []);
         } catch (e) {
-            console.log(e);
+            console.error('Records fetch error:', e);
+        } finally {
+            setLoadingRecords(false);
         }
     }, []);
 
-    /* ───────── LEADERBOARD ───────── */
+    // ─── Leaderboard ──────────────────────────────────────────────────────────
+
     const fetchLeaderboard = useCallback(async () => {
         try {
             setLoadingLeaderboard(true);
-
             const res = await api.get('/dashboard/leaderboard');
             const data = res.data.data || [];
 
-            const mapped = data.map((item: any, index: number) => ({
-                ...item,
-                id: `${item.user_id}-${index}`,
-                isYou: item.user_id === user?.id,
-            }));
-
-            setLeaders(mapped);
+            setLeaders(
+                data.map((item: any, index: number) => ({
+                    ...item,
+                    id: `${item.user_id}-${index}`,
+                    isYou: item.user_id === user?.id,
+                }))
+            );
         } catch (e) {
-            console.log('Leaderboard error:', e);
+            console.error('Leaderboard fetch error:', e);
         } finally {
             setLoadingLeaderboard(false);
         }
     }, [user]);
 
-    /* ───────── UPDATE QUIZ ───────── */
+    // ─── Update quiz locally ──────────────────────────────────────────────────
+
     const updateQuizData = useCallback((quizId: number, data: Partial<Quiz>) => {
         setQuizzes(prev =>
-            prev.map(q =>
-                q.id === quizId
-                    ? { ...q, ...data, completed: true }
-                    : q
-            )
+            prev.map(q => q.id === quizId ? { ...q, ...data, completed: true } : q)
         );
     }, []);
 
-    /* ───────── QUIZ COMPLETED ───────── */
+    // ─── On quiz completed ────────────────────────────────────────────────────
+
     const onQuizCompleted = useCallback(async (quizId: number, data: Partial<Quiz>) => {
         updateQuizData(quizId, data);
-
         await Promise.allSettled([
             fetchStats(),
             fetchRecords(),
@@ -204,7 +204,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ]);
     }, [updateQuizData, fetchStats, fetchRecords, fetchLeaderboard]);
 
-    /* ───────── REFRESH ALL ───────── */
+    // ─── Refetch all ──────────────────────────────────────────────────────────
+
     const refetchAll = useCallback(async () => {
         await Promise.all([
             fetchQuizzes(),
@@ -214,17 +215,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ]);
     }, [fetchQuizzes, fetchStats, fetchRecords, fetchLeaderboard]);
 
-    /* ───────── AUTO LOAD ───────── */
+    // ─── Auto load ────────────────────────────────────────────────────────────
+
     useEffect(() => {
-        if (user) {
-            fetchQuizzes();
-            fetchStats();
-            fetchRecords();
-            fetchLeaderboard();
-        }
+        if (user) refetchAll();
     }, [user]);
 
-    /* ───────── CLEAR ON LOGOUT ───────── */
+    // ─── Clear on logout ──────────────────────────────────────────────────────
+
     useEffect(() => {
         if (!user) {
             setQuizzes([]);
@@ -235,29 +233,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }, [user]);
 
     return (
-        <DataContext.Provider
-            value={{
-                quizzes,
-                stats,
-                records,
-                leaders,
-
-                loadingQuizzes,
-                loadingStats,
-                loadingLeaderboard,
-
-                error,
-
-                fetchQuizzes,
-                fetchStats,
-                fetchRecords,
-                fetchLeaderboard,
-
-                updateQuizData,
-                onQuizCompleted,
-                refetchAll,
-            }}
-        >
+        <DataContext.Provider value={{
+            quizzes, stats, records, leaders,
+            loadingQuizzes, loadingStats, loadingLeaderboard, loadingRecords,
+            error,
+            fetchQuizzes, fetchStats, fetchRecords, fetchLeaderboard,
+            updateQuizData, onQuizCompleted, refetchAll,
+        }}>
             {children}
         </DataContext.Provider>
     );
