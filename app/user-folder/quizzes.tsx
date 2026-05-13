@@ -86,7 +86,7 @@ export default function QuizDashboard() {
                     <Text style={styles.emptyText}>No quizzes available</Text>
                 </View>
             ) : (
-                quizzes.map((quiz: any, index) => (
+                quizzes.map((quiz: any) => (
                     <TouchableOpacity
                         key={quiz.id}
                         style={styles.card}

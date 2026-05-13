@@ -40,15 +40,15 @@ type FieldErrors = Partial<Record<
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function EditProfileModal({ visible, onClose, onSaved, initialData }: Props) {
-    const [firstName, setFirstName]           = useState('');
-    const [lastName, setLastName]             = useState('');
-    const [email, setEmail]                   = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword]       = useState('');
+    const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [errors, setErrors]                 = useState<FieldErrors>({});
-    const [apiError, setApiError]             = useState<string | null>(null);
-    const [loading, setLoading]               = useState(false);
+    const [errors, setErrors] = useState<FieldErrors>({});
+    const [apiError, setApiError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
     // Sync initial data when modal opens
     useEffect(() => {
@@ -71,7 +71,7 @@ export default function EditProfileModal({ visible, onClose, onSaved, initialDat
         const e: FieldErrors = {};
 
         if (!firstName.trim()) e.first_name = 'First name is required.';
-        if (!lastName.trim())  e.last_name  = 'Last name is required.';
+        if (!lastName.trim()) e.last_name = 'Last name is required.';
 
         if (!email.trim()) {
             e.email = 'Email is required.';
@@ -82,7 +82,7 @@ export default function EditProfileModal({ visible, onClose, onSaved, initialDat
         const changingPassword = newPassword || confirmPassword || currentPassword;
         if (changingPassword) {
             if (!currentPassword) e.current_password = 'Current password is required.';
-            if (!newPassword)     e.new_password     = 'New password is required.';
+            if (!newPassword) e.new_password = 'New password is required.';
             else if (newPassword.length < 8)
                 e.new_password = 'Password must be at least 8 characters.';
             if (newPassword !== confirmPassword)
@@ -101,13 +101,13 @@ export default function EditProfileModal({ visible, onClose, onSaved, initialDat
         try {
             const payload: UpdateProfilePayload = {
                 first_name: firstName.trim(),
-                last_name:  lastName.trim(),
-                email:      email.trim(),
+                last_name: lastName.trim(),
+                email: email.trim(),
             };
 
             if (currentPassword) {
-                payload.current_password        = currentPassword;
-                payload.new_password            = newPassword;
+                payload.current_password = currentPassword;
+                payload.new_password = newPassword;
                 payload.new_password_confirmation = confirmPassword;
             }
 

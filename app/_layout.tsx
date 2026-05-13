@@ -40,10 +40,12 @@ function LayoutContent() {
   const pathname = usePathname();
   const isUserSection = pathname?.includes("user-folder");
 
+  const isQuizSection = pathname?.includes("quiz");
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Header — fixed at top, only on auth screens */}
-      {!isUserSection && <Header />}
+      {!isUserSection && !isQuizSection && <Header />}
 
       {/* Content — fills all remaining space between header and footer */}
       <View style={styles.content}>
@@ -51,7 +53,7 @@ function LayoutContent() {
       </View>
 
       {/* Footer — fixed at bottom, only on auth screens */}
-      {!isUserSection && <Footer />}
+      {!isUserSection && !isQuizSection && <Footer />}
     </SafeAreaView>
   );
 }

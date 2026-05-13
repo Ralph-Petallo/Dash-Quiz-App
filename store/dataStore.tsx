@@ -119,7 +119,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
             setLoadingQuizzes(true);
             const res = await api.get('/quizzes');
-            const data = res.data.data || [];
+            const { data } = res.data || [];
 
             setQuizzes(
                 data.map((quiz: any, i: number) => ({

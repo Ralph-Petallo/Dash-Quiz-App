@@ -2,7 +2,7 @@ import useAuth from '@/hooks/useAuth';
 import api from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,26 +16,64 @@ import {
     View
 } from 'react-native';
 
-const INDIGO = '#4f46e5';
-const INDIGO_DARK = '#4338ca';
+const INDIGO = '#6366f1';
+const INDIGO_DARK = '#4f46e5';
 const GREEN = '#22c55e';
 const GREEN_DARK = '#16a34a';
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_SECONDS = 30;
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+    const [credentialError, setCredentialError] = useState<string | null>(null);
+    const [attempts, setAttempts] = useState(0);
+    const [lockSeconds, setLockSeconds] = useState(0);
+    const lockTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const router = useRouter();
     const { fetchUser } = useAuth();
 
-    const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please enter email and password');
-            return;
+    const startLockout = () => {
+        setLockSeconds(LOCKOUT_SECONDS);
+        lockTimer.current = setInterval(() => {
+            setLockSeconds((prev) => {
+                if (prev <= 1) {
+                    clearInterval(lockTimer.current!);
+                    lockTimer.current = null;
+                    setAttempts(0);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
+    const validate = () => {
+        const newErrors: { email?: string; password?: string } = {};
+
+        if (!email) {
+            newErrors.email = 'Email address is required.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            newErrors.email = 'Please enter a valid email address.';
         }
 
+        if (!password) {
+            newErrors.password = 'Password is required.';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleLogin = async () => {
+        if (lockSeconds > 0 || !validate()) return;
+
+        setCredentialError(null);
         setLoading(true);
+
         try {
             const { data } = await api.post('/mobile/login', { email, password });
 
@@ -47,18 +85,24 @@ export default function LoginPage() {
                 Alert.alert('Login Failed', 'No token received');
             }
         } catch (error: any) {
-            console.log(error?.response?.data || error.message);
-            Alert.alert(
-                'Login Failed',
-                error?.response?.data?.message || 'Invalid email or password'
-            );
+
+            const newAttempts = attempts + 1;
+            setAttempts(newAttempts);
+
+            if (newAttempts >= MAX_ATTEMPTS) {
+                startLockout();
+                setCredentialError(`Too many failed attempts. Please wait ${LOCKOUT_SECONDS} seconds.`);
+            } else {
+                setCredentialError('Invalid email or password. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
     };
 
+    const isLocked = lockSeconds > 0;
+
     return (
-        // ✅ No SafeAreaView — parent _layout.tsx already wraps everything
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.flex}
@@ -95,37 +139,69 @@ export default function LoginPage() {
 
                     <Text style={styles.label}>Email address</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[
+                            styles.input,
+                            (errors.email) ? styles.inputError : null,
+                        ]}
                         placeholder="@example.com"
                         placeholderTextColor="grey"
                         autoCapitalize="none"
                         keyboardType="email-address"
                         value={email}
-                        onChangeText={setEmail}
+                        onChangeText={(text) => {
+                            setEmail(text);
+                            setCredentialError(null);
+                            if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                        }}
                     />
+                    {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
                     <Text style={styles.label}>Password</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[
+                            styles.input,
+                            (errors.password) ? styles.inputError : null,
+                        ]}
                         placeholder="••••••"
                         placeholderTextColor="grey"
                         secureTextEntry
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={(text) => {
+                            setPassword(text);
+                            setCredentialError(null);
+                            if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                        }}
                     />
+                    {errors.password && <Text style={styles.error}>{errors.password}</Text>}
+
+                    {/* ── Credential / lockout error banner ── */}
+                    {credentialError && (
+                        <View style={styles.credentialErrorBox}>
+                            <Text style={styles.credentialErrorText}>
+                                {credentialError}
+                            </Text>
+                        </View>
+                    )}
 
                     <Pressable
                         onPress={handleLogin}
-                        style={({ pressed }) => [styles.loginBtn, pressed && styles.loginBtnPressed]}
+                        disabled={loading || isLocked}
+                        style={({ pressed }) => [
+                            styles.loginBtn, loading && styles.submitting,
+                            isLocked && styles.loginBtnLocked,
+                            pressed && !isLocked && styles.loginBtnPressed,
+                        ]}
                     >
                         {loading ? (
                             <ActivityIndicator color="#fff" />
+                        ) : isLocked ? (
+                            <Text style={styles.loginText}>Login</Text>
                         ) : (
                             <Text style={styles.loginText}>Login</Text>
                         )}
                     </Pressable>
 
-                    <Pressable style={styles.forgotWrap}>
+                    <Pressable style={styles.forgotWrap} onPress={() => router.push('/forgot')}>
                         <Text style={styles.forgotText}>Forgot password?</Text>
                     </Pressable>
 
@@ -170,6 +246,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 6,
     },
+    submitting: { backgroundColor: '#aaa' },
     badgeStar: {
         color: INDIGO,
         fontSize: 11,
@@ -187,8 +264,7 @@ const styles = StyleSheet.create({
         fontSize: 30,
         fontWeight: '800',
         color: '#0f172a',
-        lineHeight: 38,
-        textAlign:"center",
+        textAlign: 'center',
         marginBottom: 10,
         letterSpacing: -0.5,
     },
@@ -198,7 +274,7 @@ const styles = StyleSheet.create({
     },
     heroSub: {
         fontSize: 13,
-        textAlign:'center',
+        textAlign: 'center',
         color: '#64748b',
         lineHeight: 20,
         marginBottom: 20,
@@ -216,14 +292,14 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     cardTitle: {
-        textAlign:'center',
+        textAlign: 'center',
         fontSize: 19,
         fontWeight: '700',
         color: '#0f172a',
         marginBottom: 3,
     },
     cardSubtitle: {
-        textAlign:"center",
+        textAlign: 'center',
         fontSize: 13,
         color: '#64748b',
         marginBottom: 16,
@@ -237,32 +313,65 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
     input: {
-        height: 48,
+        paddingVertical:14,
         backgroundColor: '#fff',
         borderWidth: 1,
         borderColor: '#e2e8f0',
         borderRadius: 10,
         paddingHorizontal: 14,
-        fontSize: 15,
+        fontSize: 14,
         color: '#0f172a',
-        marginBottom: 14,
+        marginBottom: 4,
+    },
+    inputError: {
+        borderColor: '#f87171',
+    },
+    error: {
+        fontSize: 12,
+        color: '#ef4444',
+        marginTop: -6,
+        marginBottom: 8,
+        paddingHorizontal: 2,
+    },
+
+    /* ── Credential error banner ── */
+    credentialErrorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderLeftWidth: 3,
+        backgroundColor: '#fef2f2',
+        borderColor: '#ef4444',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginVertical: 12,
+        gap: 8,
+    },
+    credentialErrorText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#b91c1c',
+        lineHeight: 18,
     },
 
     /* ── Login Button ── */
     loginBtn: {
-        height: 48,
-        backgroundColor: INDIGO,
+        paddingVertical:12,
+        backgroundColor: INDIGO_DARK,
         borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
+        marginTop: 4,
     },
     loginBtnPressed: {
         backgroundColor: INDIGO_DARK,
     },
+    loginBtnLocked: {
+        backgroundColor: '#94a3b8',
+    },
     loginText: {
         color: '#fff',
         fontSize: 15,
-        fontWeight: '700',
         letterSpacing: 0.2,
     },
 
@@ -274,7 +383,6 @@ const styles = StyleSheet.create({
     forgotText: {
         color: INDIGO,
         fontSize: 13,
-        fontWeight: '500',
     },
 
     /* ── Divider ── */
@@ -286,17 +394,17 @@ const styles = StyleSheet.create({
     line: {
         flex: 1,
         height: 1,
-        backgroundColor: '#e2e8f0',
+        backgroundColor: '#d1d5db',
     },
     dividerText: {
         marginHorizontal: 12,
-        color: '#94a3b8',
+        color: '#d1d5db',
         fontSize: 13,
     },
 
     /* ── Create Account Button ── */
     registerBtn: {
-        height: 48,
+        paddingVertical: 12,
         backgroundColor: GREEN_DARK,
         borderRadius: 10,
         alignItems: 'center',
@@ -307,8 +415,7 @@ const styles = StyleSheet.create({
     },
     registerText: {
         color: '#fff',
-        fontSize: 15,
-        fontWeight: '700',
+        fontSize:14,
         letterSpacing: 0.2,
     },
 });

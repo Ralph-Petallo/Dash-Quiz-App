@@ -1,4 +1,5 @@
 import useData from '@/hooks/useData';
+import api from '@/services/api';
 import { RecordItem } from '@/store/dataStore';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +23,13 @@ const PASS_THRESHOLD = 7;
 
 const fmt = (d: string) =>
     new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+};
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -117,53 +125,184 @@ const TrendChart = ({ data }: { data: { label: string; value: number }[] }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
-const DetailModal = ({ record, onClose }: { record: RecordItem | null; onClose: () => void }) => {
+type QuestionResult = {
+    question_id: number;
+    question: string;
+    user_answer: string;
+    correct_answer: string;
+    is_correct: boolean;
+};
+
+type FullResult = {
+    record_id: number;
+    quiz_id: number;
+    score: number;
+    elapsed_time: number;
+    total_questions: number;
+    questions: QuestionResult[];
+};
+
+const DetailModal = ({
+    record,
+    onClose,
+}: {
+    record: RecordItem | null;
+    onClose: () => void;
+}) => {
+    const [result, setResult] = useState<FullResult | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!record?.id) return;
+
+        const fetch = async () => {
+            try {
+                setLoading(true);
+                setResult(null);
+                const res = await api.get(`/quiz/result/${record.id}`);
+                setResult(res.data);
+                console.log(res.data);
+            } catch (e) {
+                console.error('Detail fetch error:', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetch();
+    }, [record?.id]);
+
     if (!record) return null;
 
     const pass = record.score >= PASS_THRESHOLD;
-    const accuracy = Math.round((record.score / record.total_questions) * 100);
+    const accuracy = result
+        ? Math.round((result.score / result.total_questions) * 100)
+        : Math.round((record.score / (record.total_questions || 10)) * 100);
+
+    const correct = result?.questions.filter(q => q.is_correct).length ?? 0;
+    const wrong = result?.questions.filter(q => !q.is_correct).length ?? 0;
 
     return (
-        <Modal transparent animationType="fade" onRequestClose={onClose}>
+        <Modal transparent animationType="slide" onRequestClose={onClose}>
             <View style={md.overlay}>
                 <View style={md.sheet}>
 
+                    {/* ── Header ── */}
                     <View style={md.header}>
-                        <Text style={md.title}>{record.quiz_title}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={md.title} numberOfLines={2}>{record.quiz_title}</Text>
+                            {record.quiz_description ? (
+                                <Text style={md.desc}>{record.quiz_description}</Text>
+                            ) : null}
+                        </View>
                         <TouchableOpacity onPress={onClose} style={md.closeBtn}>
                             <Ionicons name="close" size={18} color="#64748b" />
                         </TouchableOpacity>
                     </View>
 
-                    {record.quiz_description ? (
-                        <Text style={md.desc}>{record.quiz_description}</Text>
-                    ) : null}
-
-                    <View style={md.divider} />
-
-                    <View style={md.row}>
-                        <Text style={md.rowLabel}>Date</Text>
-                        <Text style={md.rowValue}>{fmt(record.created_at)}</Text>
-                    </View>
-                    <View style={md.row}>
-                        <Text style={md.rowLabel}>Score</Text>
-                        <Text style={[md.rowValue, { color: pass ? GREEN : RED, fontWeight: '700' }]}>
-                            {record.score} / 10
-                        </Text>
-                    </View>
-                    <View style={md.row}>
-                        <Text style={md.rowLabel}>Accuracy</Text>
-                        <Text style={md.rowValue}>{accuracy}%</Text>
-                    </View>
-                    <View style={md.row}>
-                        <Text style={md.rowLabel}>Result</Text>
-                        <View style={[md.badge, { backgroundColor: pass ? '#d1fae5' : '#fee2e2' }]}>
-                            <Text style={[md.badgeText, { color: pass ? GREEN : RED }]}>
-                                {pass ? 'Passed' : 'Needs Review'}
-                            </Text>
+                    {/* ── Summary row ── */}
+                    <View style={md.summaryRow}>
+                        <View style={md.summaryBox}>
+                            <Text style={md.summaryVal}>{record.score}/{record.total_questions ?? 10}</Text>
+                            <Text style={md.summaryLbl}>Score</Text>
+                        </View>
+                        <View style={md.summaryBox}>
+                            <Text style={md.summaryVal}>{accuracy}%</Text>
+                            <Text style={md.summaryLbl}>Accuracy</Text>
+                        </View>
+                        <View style={md.summaryBox}>
+                            <Text style={md.summaryVal}>{record.elapsed_time ? formatTime(record.elapsed_time) : '—'}</Text>
+                            <Text style={md.summaryLbl}>Time</Text>
+                        </View>
+                        <View style={md.summaryBox}>
+                            <View style={[md.badge, { backgroundColor: pass ? '#d1fae5' : '#fee2e2' }]}>
+                                <Text style={[md.badgeText, { color: pass ? GREEN : RED }]}>
+                                    {pass ? 'Passed' : 'Failed'}
+                                </Text>
+                            </View>
+                            <Text style={md.summaryLbl}>Result</Text>
                         </View>
                     </View>
 
+                    <View style={md.divider} />
+
+                    {/* ── Question list ── */}
+                    {loading ? (
+                        <View style={md.loadingWrap}>
+                            <Text style={md.loadingText}>Loading answers...</Text>
+                        </View>
+                    ) : result ? (
+                        <>
+                            {/* Correct / Wrong count */}
+                            <View style={md.countRow}>
+                                <View style={[md.countBox, { backgroundColor: '#d1fae5' }]}>
+                                    <Ionicons name="checkmark-circle" size={14} color={GREEN} />
+                                    <Text style={[md.countText, { color: GREEN }]}>{correct} Correct</Text>
+                                </View>
+                                <View style={[md.countBox, { backgroundColor: '#fee2e2' }]}>
+                                    <Ionicons name="close-circle" size={14} color={RED} />
+                                    <Text style={[md.countText, { color: RED }]}>{wrong} Wrong</Text>
+                                </View>
+                            </View>
+
+                            <ScrollView
+                                style={md.questionList}
+                                showsVerticalScrollIndicator={false}
+                                nestedScrollEnabled
+                            >
+                                {result.questions.map((q, i) => (
+                                    <View
+                                        key={q.question_id}
+                                        style={[
+                                            md.questionCard,
+                                            { borderLeftColor: q.is_correct ? GREEN : RED },
+                                        ]}
+                                    >
+                                        {/* Question number + icon */}
+                                        <View style={md.questionHeader}>
+                                            <Text style={md.questionNum}>Q{i + 1}</Text>
+                                            <Ionicons
+                                                name={q.is_correct ? 'checkmark-circle' : 'close-circle'}
+                                                size={16}
+                                                color={q.is_correct ? GREEN : RED}
+                                            />
+                                        </View>
+
+                                        {/* Question text */}
+                                        <Text style={md.questionText}>{q.question}</Text>
+
+                                        {/* User answer */}
+                                        <View style={[
+                                            md.answerRow,
+                                            { backgroundColor: q.is_correct ? '#f0fdf4' : '#fff1f2' },
+                                        ]}>
+                                            <Text style={md.answerLabel}>Your answer</Text>
+                                            <Text style={[
+                                                md.answerVal,
+                                                { color: q.is_correct ? GREEN : RED },
+                                            ]}>
+                                                {q.user_answer}
+                                            </Text>
+                                        </View>
+
+                                        {/* Correct answer — only show if wrong */}
+                                        {!q.is_correct && (
+                                            <View style={[md.answerRow, { backgroundColor: '#f0fdf4' }]}>
+                                                <Text style={md.answerLabel}>Correct answer</Text>
+                                                <Text style={[md.answerVal, { color: GREEN }]}>
+                                                    {q.correct_answer}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </>
+                    ) : (
+                        <Text style={md.loadingText}>Could not load question details.</Text>
+                    )}
+
+                    {/* ── Close button ── */}
                     <TouchableOpacity style={md.closeAction} onPress={onClose}>
                         <Text style={md.closeActionText}>Close</Text>
                     </TouchableOpacity>
@@ -177,7 +316,7 @@ const DetailModal = ({ record, onClose }: { record: RecordItem | null; onClose: 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function RecordsPage() {
-    const { records, loadingStats: loading } = useData();
+    const { records, loadingRecords: loading } = useData();
 
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState<RecordItem | null>(null);
@@ -378,18 +517,47 @@ const tr = StyleSheet.create({
 });
 
 const md = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 20 },
-    sheet: { backgroundColor: '#fff', borderRadius: 18, padding: 20, gap: 10 },
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '90%', gap: 12 },
+
+    // Header
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
     title: { fontSize: 15, fontWeight: '800', color: '#1e293b', flex: 1, paddingRight: 8 },
     closeBtn: { padding: 4 },
-    desc: { fontSize: 12, color: '#94a3b8', lineHeight: 18 },
+    desc: { fontSize: 12, color: '#94a3b8', lineHeight: 18, marginTop: 2 },
     divider: { height: 1, backgroundColor: '#f1f5f9' },
+
+    // Summary
+    summaryRow: { flexDirection: 'row', gap: 8 },
+    summaryBox: { flex: 1, alignItems: 'center', gap: 4 },
+    summaryVal: { fontSize: 13, fontWeight: '800', color: '#1e293b' },
+    summaryLbl: { fontSize: 9, color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
+    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+    badgeText: { fontSize: 10, fontWeight: '700' },
+
+    // Correct/wrong count
+    countRow: { flexDirection: 'row', gap: 8 },
+    countBox: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 7, borderRadius: 10 },
+    countText: { fontSize: 12, fontWeight: '700' },
+
+    // Questions
+    questionList: { maxHeight: 380 },
+    questionCard: { backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, marginBottom: 10, borderLeftWidth: 3 },
+    questionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    questionNum: { fontSize: 10, fontWeight: '700', color: '#94a3b8', letterSpacing: 0.5 },
+    questionText: { fontSize: 13, fontWeight: '600', color: '#1e293b', lineHeight: 19, marginBottom: 8 },
+    answerRow: { borderRadius: 8, padding: 8, marginBottom: 6 },
+    answerLabel: { fontSize: 9, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
+    answerVal: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
+
+    // Loading
+    loadingWrap: { paddingVertical: 24, alignItems: 'center' },
+    loadingText: { color: '#94a3b8', fontSize: 13 },
+
+    // Close
     row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     rowLabel: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
     rowValue: { fontSize: 13, color: '#1e293b' },
-    badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
-    badgeText: { fontSize: 11, fontWeight: '700' },
-    closeAction: { marginTop: 4, backgroundColor: PURPLE, padding: 12, borderRadius: 10, alignItems: 'center' },
-    closeActionText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    closeAction: { backgroundColor: PURPLE, padding: 13, borderRadius: 12, alignItems: 'center' },
+    closeActionText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

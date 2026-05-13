@@ -1,25 +1,9 @@
 import { COLORS } from "@/constants/colors";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function QuizLayout() {
     const router = useRouter();
-    const [time, setTime] = useState(0);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTime((t) => t + 1);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const formatTime = () => {
-        const mins = Math.floor(time / 60);
-        const secs = time % 60;
-        return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-    };
 
     return (
         <>
@@ -38,19 +22,8 @@ export default function QuizLayout() {
                         <Text style={styles.subtitle}>Computer Systems Servicing</Text>
                     </View>
                 </View>
-
-                <View style={styles.right}>
-                    <View style={styles.stat}>
-                        <Text style={styles.label}>Elapsed</Text>
-                        <Text style={styles.value}>{formatTime()}</Text>
-                    </View>
-                </View>
             </View>
 
-            {/* PROGRESS BAR */}
-            <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: "30%" }]} />
-            </View>
 
             {/* SCREENS */}
             <Stack

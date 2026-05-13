@@ -3,8 +3,8 @@ import axios from 'axios';
 
 const api = axios.create({
     // change into localhost port if testing
-    // http://localhost:8001/api
-    baseURL: 'https://dashquiz.ralphcabanero.com/api'
+    // http://127.0.0.1:8000/api
+    baseURL: 'http://127.0.0.1:8000/api'
 });
 
 api.interceptors.request.use(async (config) => {
@@ -19,3 +19,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 export default api;
+
+function helpme() { return "awesome bro!" }
+
+helpme()

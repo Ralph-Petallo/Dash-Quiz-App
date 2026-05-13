@@ -1,7 +1,7 @@
 import useData from '@/hooks/useData';
-import api from "@/services/api";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import api from '@/services/api';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     SafeAreaView,
@@ -9,312 +9,528 @@ import {
     Text,
     TouchableOpacity,
     View,
-} from "react-native";
+} from 'react-native';
 
 export default function QuizScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
 
-    const { onQuizCompleted } = useData();
+    const {
+        onQuizCompleted,
+    } = useData();
+
+    const quizId = Number(id);
 
     const [quiz, setQuiz] = useState<any>(null);
     const [questions, setQuestions] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selected, setSelected] = useState<number | null>(null);
+    const [answers, setAnswers] = useState<any[]>([]);
     const [score, setScore] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [elapsedTime, setElapsedTime] = useState(0);
 
-    const currentQuestion = questions[currentIndex];
-    const isLast = currentIndex === questions.length - 1;
+    const currentQuestion =
+        questions[currentIndex];
 
-    // ─── Fetch ────────────────────────────────────────────────────────────────
+    const isLast =
+        currentIndex ===
+        questions.length - 1;
+
+    /* ───────────────── TIMER ───────────────── */
+
+    useEffect(() => {
+        if (loading || !questions.length)
+            return;
+
+        const timer = setInterval(() => {
+            setElapsedTime(prev => prev + 1);
+        }, 1000);
+
+        return () =>
+            clearInterval(timer);
+    }, [loading, questions.length]);
+
+    /* ───────────────── FETCH QUIZ ───────────────── */
 
     const fetchQuiz = async () => {
         try {
-            const res = await api.get(`/quiz/${Number(id)}`)
-            setQuiz(res.data.quiz)
-            setQuestions(res.data.quiz.questions || [])
-        } catch (e) {
-            console.error("Quiz fetch error:", e)
+            setLoading(true);
+
+            const res = await api.get(`/quiz/${quizId}`);
+
+            const quizData = res.data.quiz;
+
+            setQuiz(quizData);
+            setQuestions(quizData.questions || []);
+            console.log('Quiz data:', quizData);
+        } catch (error: any) {
+            console.error(
+                'Quiz fetch error:',
+                error
+            );
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
 
-    useEffect(() => { fetchQuiz() }, [])
+    useEffect(() => {
+        fetchQuiz();
+    }, []);
 
-    // ─── Submit answer ────────────────────────────────────────────────────────
+    /* ───────────────── SUBMIT ANSWER ───────────────── */
 
     const submitAnswer = async () => {
-        if (selected === null) return
+        if (selected === null || submitting)
+            return;
 
         try {
-            const res = await api.post("/quiz/answer", {
-                question_id: currentQuestion.id,
-                answer_id: selected,
-            })
+            setSubmitting(true);
 
-            const nextScore = res.data.correct ? score + 1 : score
-            setScore(nextScore)
-            setSelected(null)
+            const res = await api.post(
+                '/quiz/answer',
+                {
+                    question_id: currentQuestion.id,
+                    answer_id: selected,
+                }
+            );
+
+            const isCorrect = res.data.correct;
+            const nextScore = isCorrect ? score + 1 : score;
+
+            // save attempt locally
+            setAnswers(prev => [
+                ...prev,
+                {
+                    question_id:
+                        currentQuestion.id,
+                    answer_id:
+                        selected,
+                },
+            ]);
+
+            setScore(nextScore);
+            setSelected(null);
 
             if (!isLast) {
-                setCurrentIndex((prev) => prev + 1)
-            } else {
-                await finishQuiz(nextScore)
+                setCurrentIndex(prev => prev + 1);
+                return;
             }
-        } catch (e) {
-            console.error("Answer submit error:", e)
-        }
-    }
 
-    // ─── Finish ───────────────────────────────────────────────────────────────
+            await finishQuiz(nextScore);
+        } catch (e) {
+            console.error(
+                'Answer submit error:',
+                e
+            );
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    /* ───────────────── FINISH QUIZ ───────────────── */
 
     const finishQuiz = async (finalScore: number) => {
         try {
-            await api.post("/quiz/result", {
-                quiz_id: Number(id),
+            const res = await api.post('/quiz/result', {
+                quiz_id: quizId,
                 score: finalScore,
+                elapsed_time: elapsedTime,
+                answers: answers,
             })
-            // refresh leaderboard + stats + records + mark quiz complete locally
-            await onQuizCompleted(Number(id), { completed: true });
-        } catch (e) {
-            console.error("Result submit error:", e)
-        } finally {
+
+            const recordId = res.data.record_id
+
+            await onQuizCompleted(quizId, { completed: true })
+
             router.replace({
-                pathname: "./quiz-result",
+                pathname: './quiz-result/[recordId]',
                 params: {
-                    score: finalScore,
-                    total: questions.length,
-                    quizId: id ?? '',
+                    recordId: String(recordId),
                 },
             })
+
+        } catch (e) {
+            console.error('Result submit error:', e)
         }
     }
 
-    // ─── States ───────────────────────────────────────────────────────────────
+    /* ───────────────── STATES ───────────────── */
 
     if (loading) {
         return (
             <View style={s.center}>
-                <ActivityIndicator size="large" color="#4b32a8" />
-                <Text style={s.loadingText}>Preparing your questions...</Text>
+                <ActivityIndicator
+                    size="large"
+                    color="#4f46e5"
+                />
+                <Text
+                    style={
+                        s.loadingText
+                    }
+                >
+                    Preparing your
+                    quiz...
+                </Text>
             </View>
-        )
+        );
     }
 
     if (!currentQuestion) {
         return (
             <View style={s.center}>
-                <Text style={s.emptyText}>No questions available.</Text>
+                <Text
+                    style={s.emptyText}
+                >
+                    No questions
+                    available.
+                </Text>
             </View>
-        )
+        );
     }
 
-    // ─── UI ───────────────────────────────────────────────────────────────────
+    /* ───────────────── UI ───────────────── */
 
     return (
         <SafeAreaView style={s.safe}>
             <View style={s.container}>
+                {/* Header */}
 
-                {/* Progress */}
-                <View style={s.progressRow}>
-                    <Text style={s.progressLabel}>
-                        Question {currentIndex + 1} of {questions.length}
+                <View
+                    style={
+                        s.progressRow
+                    }
+                >
+                    <View>
+                        <Text
+                            style={
+                                s.progressLabel
+                            }
+                        >
+                            Question{' '}
+                            {currentIndex +
+                                1}{' '}
+                            of{' '}
+                            {
+                                questions.length
+                            }
+                        </Text>
+
+                        <Text
+                            style={
+                                s.quizTitle
+                            }
+                        >
+                            {quiz?.title}
+                        </Text>
+                    </View>
+
+                    <Text
+                        style={
+                            s.scoreLabel
+                        }
+                    >
+                        {score}/
+                        {
+                            questions.length
+                        }
                     </Text>
-                    <Text style={s.scoreLabel}>Score: {score}</Text>
                 </View>
 
-                <View style={s.progressTrack}>
+                {/* Progress */}
+
+                <View
+                    style={
+                        s.progressTrack
+                    }
+                >
                     <View
                         style={[
                             s.progressFill,
-                            { width: `${((currentIndex + 1) / questions.length) * 100}%` },
+                            {
+                                width: `${((currentIndex +
+                                    1) /
+                                    questions.length) *
+                                    100
+                                    }%`,
+                            },
                         ]}
                     />
                 </View>
 
                 {/* Question */}
-                <View style={s.questionBox}>
-                    <Text style={s.questionText}>{currentQuestion.text}</Text>
+
+                <View
+                    style={
+                        s.questionBox
+                    }
+                >
+                    <Text
+                        style={
+                            s.questionText
+                        }
+                    >
+                        {
+                            currentQuestion.text
+                        }
+                    </Text>
                 </View>
 
-                {/* Options */}
-                {currentQuestion.options.map((opt: any, index: number) => {
-                    const isSelected = selected === opt.id
-                    return (
-                        <TouchableOpacity
-                            key={opt.id}
-                            onPress={() => setSelected(opt.id)}
-                            style={[s.option, isSelected && s.optionSelected]}
-                            activeOpacity={0.75}
-                        >
-                            <View style={[s.optionBadge, isSelected && s.optionBadgeSelected]}>
-                                <Text style={[s.optionBadgeText, isSelected && s.optionBadgeTextSelected]}>
-                                    {String.fromCharCode(65 + index)}
+                {/* Answers */}
+
+                {currentQuestion.options?.map(
+                    (
+                        opt: any,
+                        index: number
+                    ) => {
+                        const isSelected =
+                            selected ===
+                            opt.id;
+
+                        return (
+                            <TouchableOpacity
+                                key={
+                                    opt.id
+                                }
+                                onPress={() =>
+                                    setSelected(
+                                        opt.id
+                                    )
+                                }
+                                style={[
+                                    s.option,
+                                    isSelected &&
+                                    s.optionSelected,
+                                ]}
+                                activeOpacity={
+                                    0.8
+                                }
+                            >
+                                <View
+                                    style={[
+                                        s.optionBadge,
+                                        isSelected &&
+                                        s.optionBadgeSelected,
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            s.optionBadgeText,
+                                            isSelected &&
+                                            s.optionBadgeTextSelected,
+                                        ]}
+                                    >
+                                        {String.fromCharCode(
+                                            65 +
+                                            index
+                                        )}
+                                    </Text>
+                                </View>
+
+                                <Text
+                                    style={[
+                                        s.optionText,
+                                        isSelected &&
+                                        s.optionTextSelected,
+                                    ]}
+                                >
+                                    {
+                                        opt.text
+                                    }
                                 </Text>
-                            </View>
-                            <Text style={[s.optionText, isSelected && s.optionTextSelected]}>
-                                {opt.text}
-                            </Text>
-                        </TouchableOpacity>
-                    )
-                })}
+                            </TouchableOpacity>
+                        );
+                    }
+                )}
 
-                {/* Submit button */}
+                {/* Button */}
+
                 <TouchableOpacity
-                    style={[s.btn, selected === null && s.btnDisabled]}
-                    onPress={submitAnswer}
-                    disabled={selected === null}
-                    activeOpacity={0.85}
+                    style={[
+                        s.btn,
+                        (selected ===
+                            null ||
+                            submitting) &&
+                        s.btnDisabled,
+                    ]}
+                    disabled={
+                        selected ===
+                        null ||
+                        submitting
+                    }
+                    onPress={
+                        submitAnswer
+                    }
+                    activeOpacity={
+                        0.85
+                    }
                 >
-                    <Text style={s.btnText}>
-                        {isLast ? "Finish Quiz" : "Next"}
-                    </Text>
+                    {submitting ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text
+                            style={
+                                s.btnText
+                            }
+                        >
+                            {isLast
+                                ? 'Finish Quiz'
+                                : 'Next Question'}
+                        </Text>
+                    )}
                 </TouchableOpacity>
-
             </View>
         </SafeAreaView>
-    )
+    );
 }
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
-
-const PURPLE = "#4b32a8"
+const PURPLE = '#4f46e5';
 
 const s = StyleSheet.create({
     safe: {
         flex: 1,
-        backgroundColor: "#f5f5f3",
+        backgroundColor: '#f8fafc',
     },
+
     container: {
         flex: 1,
         padding: 20,
     },
+
     center: {
         flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 12,
-    },
-    loadingText: {
-        fontSize: 14,
-        color: "#6b7280",
-        marginTop: 8,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: "#6b7280",
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
-    // Progress
-    progressRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 10,
+    loadingText: {
+        marginTop: 12,
+        color: '#64748b',
     },
+
+    emptyText: {
+        color: '#64748b',
+    },
+
+    progressRow: {
+        flexDirection: 'row',
+        justifyContent:
+            'space-between',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+
     progressLabel: {
         fontSize: 12,
-        fontWeight: "600",
-        color: "#8e8eb2",
-        letterSpacing: 0.4,
+        color: '#64748b',
+        fontWeight: '600',
     },
+
+    quizTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#0f172a',
+        marginTop: 4,
+    },
+
     scoreLabel: {
-        fontSize: 12,
-        fontWeight: "700",
         color: PURPLE,
+        fontWeight: '700',
     },
+
     progressTrack: {
-        width: "100%",
-        height: 5,
-        backgroundColor: "#f0edff",
-        borderRadius: 100,
-        overflow: "hidden",
+        height: 8,
+        backgroundColor: '#e2e8f0',
+        borderRadius: 999,
+        overflow: 'hidden',
         marginBottom: 24,
     },
+
     progressFill: {
-        height: "100%",
+        height: '100%',
         backgroundColor: PURPLE,
-        borderRadius: 100,
     },
 
-    // Question
     questionBox: {
-        backgroundColor: "#1a1a2e",
-        borderRadius: 16,
-        padding: 20,
+        backgroundColor: '#111827',
+        padding: 24,
+        borderRadius: 20,
         marginBottom: 20,
     },
+
     questionText: {
-        fontSize: 17,
-        fontWeight: "700",
-        color: "#ffffff",
-        textAlign: "center",
-        lineHeight: 26,
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '700',
+        lineHeight: 28,
+        textAlign: 'center',
     },
 
-    // Options
     option: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        padding: 14,
-        backgroundColor: "#ffffff",
-        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
         borderWidth: 1,
-        borderColor: "#e5e7eb",
-        marginBottom: 10,
+        borderColor: '#e5e7eb',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
     },
+
     optionSelected: {
         borderColor: PURPLE,
-        backgroundColor: "#eeedfe",
+        backgroundColor: '#eef2ff',
     },
+
     optionBadge: {
-        width: 30,
-        height: 30,
-        borderRadius: 8,
-        backgroundColor: "#f3f4f6",
-        justifyContent: "center",
-        alignItems: "center",
-        flexShrink: 0,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        backgroundColor: '#f3f4f6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
     },
+
     optionBadgeSelected: {
         backgroundColor: PURPLE,
     },
+
     optionBadgeText: {
-        fontSize: 13,
-        fontWeight: "700",
-        color: "#6b7280",
-    },
-    optionBadgeTextSelected: {
-        color: "#ffffff",
-    },
-    optionText: {
-        fontSize: 15,
-        color: "#1a1a1a",
-        flex: 1,
-        lineHeight: 22,
-    },
-    optionTextSelected: {
-        color: PURPLE,
-        fontWeight: "600",
+        fontWeight: '700',
     },
 
-    // Button
-    btn: {
-        marginTop: "auto",
-        backgroundColor: "#1a1a2e",
-        paddingVertical: 15,
-        borderRadius: 100,
-        alignItems: "center",
+    optionBadgeTextSelected: {
+        color: '#fff',
     },
-    btnDisabled: {
-        opacity: 0.4,
-    },
-    btnText: {
-        color: "#ffffff",
+
+    optionText: {
+        flex: 1,
         fontSize: 15,
-        fontWeight: "700",
+        color: '#111827',
     },
-})
+
+    optionTextSelected: {
+        color: PURPLE,
+        fontWeight: '600',
+    },
+
+    btn: {
+        marginTop: 'auto',
+        backgroundColor: PURPLE,
+        paddingVertical: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+    },
+
+    btnDisabled: {
+        opacity: 0.5,
+    },
+
+    btnText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16,
+    },
+});

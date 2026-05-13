@@ -51,7 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const token = await AsyncStorage.getItem('token');
 
-            // ✅ no token → skip API
             if (!token) {
                 setUser(null);
                 return;
