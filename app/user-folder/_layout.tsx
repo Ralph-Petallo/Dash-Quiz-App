@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import { useEffect } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type IconProps = { color: string; size: number };
 
@@ -26,7 +26,14 @@ export default function Layout() {
         }
     }, [user, loading, router]);
 
+    const AVATAR_BASE = 'https://dashquiz.ralphcabanero.com/storage/images/profiles/';
+    const LOCAL_AVATAR_BASE = 'http://127.0.0.1:8000/storage/images/profiles/';
+
     if (loading || !user) return null;
+    const avatarUri = user.profile_photo
+        ? `${LOCAL_AVATAR_BASE}${user.profile_photo}`
+        : `${LOCAL_AVATAR_BASE}default.png`;
+
 
     return (
         <Drawer
@@ -77,14 +84,13 @@ export default function Layout() {
                                     {user.full_name}
                                 </Text>
                             </View>
-                            <Image
-                                source={{
-                                    uri: user.profile_photo
-                                        ? user.profile_photo
-                                        : 'https://i.pravatar.cc/100',
-                                }}
-                                style={styles.headerAvatar}
-                            />
+
+                            <TouchableOpacity onPress={() => router.push('/user-folder/profile')}>
+                                <Image
+                                    source={{ uri: avatarUri }}
+                                    style={styles.headerAvatar}
+                                />
+                            </TouchableOpacity>
                         </View>
                     ),
 

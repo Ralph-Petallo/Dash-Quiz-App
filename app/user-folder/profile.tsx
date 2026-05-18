@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const PURPLE = '#6366f1';
 const AVATAR_BASE = 'https://dashquiz.ralphcabanero.com/storage/images/profiles/';
+const LOCAL_AVATAR_BASE = 'http://127.0.0.1:8000/storage/images/profiles/';
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <View style={s.infoRow}>
@@ -58,7 +59,7 @@ export default function ProfilePage() {
         useNativeDriver: true,
       }).start();
     }
-  }, [user]);
+  }, [user, fadeAnim]);
 
   if (!user) {
     return (
@@ -68,10 +69,9 @@ export default function ProfilePage() {
     );
   }
 
-  const avatarUri =
-    user.profile_photo
-      ? `${AVATAR_BASE}${user.profile_photo}`
-      : `${AVATAR_BASE}default.png`;
+  const avatarUri = user.profile_photo
+    ? `${LOCAL_AVATAR_BASE}${user.profile_photo}`
+    : `${LOCAL_AVATAR_BASE}default.png`;
 
   const dateJoined = user.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
@@ -83,10 +83,9 @@ export default function ProfilePage() {
 
   const quizzesTaken = stats?.completed_quizzes ?? user.quizzes_taken ?? '—';
 
-  const averageScore =
-    stats?.average_score != null
-      ? `${Math.round(stats.average_score)}%`
-      : '—';
+  const averageScore = stats?.average_score != null
+    ? `${Math.round(stats.average_score)}%`
+    : '—';
 
   // ── Avatar picker ─────────────────────────────────────────────────────────
 
@@ -111,8 +110,12 @@ export default function ProfilePage() {
 
     setPhotoUploading(true);
     try {
-      const { profile_photo } = await uploadProfilePhoto(asset.uri, mimeType);
-      setUser((prev: any) => ({ ...prev, profile_photo }));
+      const res = await uploadProfilePhoto(asset.uri, mimeType);
+
+      setUser((prev: any) => ({
+        ...prev,
+        profile_photo: res.new_photo,
+      }));
     } catch {
       Alert.alert('Upload failed', 'Could not update your profile photo.');
     } finally {
@@ -159,7 +162,7 @@ export default function ProfilePage() {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setDeleteVisible(true)} style={s.btnDelete}>
-              <Text style={s.btnDeleteText}>Delete</Text>
+              <Text style={s.btnDeleteText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
 
