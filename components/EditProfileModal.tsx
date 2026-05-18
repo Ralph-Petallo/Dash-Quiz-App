@@ -95,6 +95,7 @@ export default function EditProfileModal({ visible, onClose, onSaved, initialDat
 
     const handleSave = async () => {
         if (!validate()) return;
+
         setApiError(null);
         setLoading(true);
 
@@ -105,17 +106,32 @@ export default function EditProfileModal({ visible, onClose, onSaved, initialDat
                 email: email.trim(),
             };
 
-            if (currentPassword) {
-                payload.current_password = currentPassword;
-                payload.new_password = newPassword;
-                payload.new_password_confirmation = confirmPassword;
+            const isChangingPassword =
+                currentPassword ||
+                newPassword ||
+                confirmPassword;
+
+            if (isChangingPassword) {
+                payload.current_password =
+                    currentPassword;
+
+                payload.password =
+                    newPassword;
+
+                payload.password_confirmation =
+                    confirmPassword;
             }
 
-            const result = await updateProfile(payload);
+            const result =
+                await updateProfile(payload);
+
             onSaved(result.user);
             onClose();
         } catch (err: any) {
-            const msg = err?.response?.data?.message ?? 'Something went wrong. Please try again.';
+            const msg =
+                err?.response?.data?.message ??
+                'Something went wrong. Please try again.';
+
             setApiError(msg);
         } finally {
             setLoading(false);
