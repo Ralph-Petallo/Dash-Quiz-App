@@ -2,7 +2,9 @@ import DeleteAccountModal from '@/components/DeleteAccountModal';
 import EditProfileModal from '@/components/EditProfileModal';
 import useAuth from '@/hooks/useAuth';
 import useData from '@/hooks/useData';
+import { API_BASE_URL } from '@/services/api';
 import { uploadProfilePhoto } from '@/store/profileStore';
+import { FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,8 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PURPLE = '#6366f1';
-const AVATAR_BASE = 'https://dashquiz.ralphcabanero.com/storage/images/profiles/';
-const LOCAL_AVATAR_BASE = 'http://127.0.0.1:8000/storage/images/profiles/';
+const LOCAL_AVATAR_BASE = `${API_BASE_URL}/storage/images/profiles/`;
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <View style={s.infoRow}>
@@ -69,9 +70,9 @@ export default function ProfilePage() {
     );
   }
 
-  const avatarUri = user.profile_photo
-    ? `${LOCAL_AVATAR_BASE}${user.profile_photo}`
-    : `${LOCAL_AVATAR_BASE}default.png`;
+  const avatarUri = !user.profile_photo
+    ? `${LOCAL_AVATAR_BASE}default.png`
+    : `${LOCAL_AVATAR_BASE}${user.profile_photo}`;
 
   const dateJoined = user.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
@@ -91,33 +92,47 @@ export default function ProfilePage() {
 
   const handlePickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Please allow access to your photo library.');
+      Alert.alert(
+        'Permission required',
+        'Please allow access to your photo library.'
+      );
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+    const result =
+      await ImagePicker.launchImageLibraryAsync({
+        mediaTypes:
+          ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
     if (result.canceled) return;
 
     const asset = result.assets[0];
-    const mimeType = asset.mimeType ?? 'image/jpeg';
+
+    const mimeType =
+      asset.mimeType ??
+      'image/jpeg';
+
+    console.log('Selected asset:', asset);
 
     setPhotoUploading(true);
+
     try {
-      const res = await uploadProfilePhoto(asset.uri, mimeType);
+      const res = await uploadProfilePhoto(asset, mimeType);
 
       setUser((prev: any) => ({
-        ...prev,
-        profile_photo: res.new_photo,
+        ...prev, profile_photo: res.new_photo,
       }));
     } catch {
-      Alert.alert('Upload failed', 'Could not update your profile photo.');
+      Alert.alert(
+        'Upload failed',
+        'Could not update your profile photo.'
+      );
     } finally {
       setPhotoUploading(false);
     }
@@ -151,17 +166,25 @@ export default function ProfilePage() {
             <InfoRow label="DATE JOINED" value={dateJoined} />
             <View style={s.rowSep} />
             <InfoRow label="QUIZZES TAKEN" value={String(quizzesTaken)} />
-            <View style={s.rowSep} />
-            <InfoRow label="AVERAGE SCORE" value={averageScore} />
           </View>
 
           {/* Buttons */}
           <View style={s.btnRow}>
             <TouchableOpacity onPress={() => setEditVisible(true)} style={s.btnEdit}>
+              <FontAwesome5
+                name="edit"
+                size={18}
+                color="#fff"
+              />
               <Text style={s.btnEditText}>Edit Profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setDeleteVisible(true)} style={s.btnDelete}>
+              <FontAwesome5
+                name="trash"
+                size={12}
+                color="#e53935"
+              />
               <Text style={s.btnDeleteText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
@@ -202,7 +225,9 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 28,
+    flexDirection: 'column',
     alignItems: 'center',
+    height: 'auto',
     shadowColor: PURPLE,
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -212,8 +237,9 @@ const s = StyleSheet.create({
 
   // Avatar
   avatarWrap: { position: 'relative', marginBottom: 14 },
-  avatarRing: { padding: 3, borderRadius: 60, borderWidth: 3, borderColor: PURPLE },
+  avatarRing: { padding: 3, borderRadius: 50, borderWidth: 3, borderColor: PURPLE },
   avatar: { width: 90, height: 90, borderRadius: 45 },
+
   cameraBadge: {
     position: 'absolute',
     bottom: 0,
@@ -230,8 +256,8 @@ const s = StyleSheet.create({
   cameraBadgeUploading: { backgroundColor: '#22c55e' },
 
   // Name & Email
-  name: { fontSize: 20, fontWeight: '800', color: '#0f172a', marginBottom: 3 },
-  email: { fontSize: 13, color: '#94a3b8', marginBottom: 20 },
+  name: { fontSize: 20, fontWeight: '700', color: '#0f172a', marginBottom: 3 },
+  email: { fontSize: 13, color: '#6b7280', marginBottom: 20 },
 
   // Info box
   infoBox: {
