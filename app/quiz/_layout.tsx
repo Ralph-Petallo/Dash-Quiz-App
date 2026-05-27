@@ -1,9 +1,13 @@
 import { COLORS } from "@/constants/colors";
-import { Stack, useRouter } from "expo-router";
+import useData from "@/hooks/useData";
+import { FontAwesome5 } from "@expo/vector-icons";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
 export default function QuizLayout() {
     const router = useRouter();
+    const { id } = useLocalSearchParams();
+    const { quizzes } = useData();
+    const quiz = quizzes?.find((q: any) => q.id === Number(id));
 
     return (
         <>
@@ -14,11 +18,11 @@ export default function QuizLayout() {
                         onPress={() => router.replace("../user-folder/")}
                         style={styles.backBtn}
                     >
-                        <Text style={{ fontSize: 18 }}>←</Text>
+                        <Text style={{ fontSize: 18 }}>
+                            <FontAwesome5 name="arrow-left" width={20} height={20} /></Text>
                     </TouchableOpacity>
-
                     <View>
-                        <Text style={styles.title}>Quiz</Text>
+                        <Text style={styles.title}>{quiz?.title}</Text>
                         <Text style={styles.subtitle}>Computer Systems Servicing</Text>
                     </View>
                 </View>
@@ -37,12 +41,12 @@ export default function QuizLayout() {
 
 const styles = StyleSheet.create({
     navbar: {
-        backgroundColor: COLORS.bgCard,
+        backgroundColor: "#fff",
         padding: 14,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        borderBottomWidth: 1,
+        borderBottomWidth: 2,
         borderBottomColor: COLORS.border,
     },
     left: {
