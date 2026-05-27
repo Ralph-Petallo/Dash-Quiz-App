@@ -1,5 +1,6 @@
 import { COLORS } from '@/constants/colors';
 import useData from '@/hooks/useData';
+import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
     ActivityIndicator,
@@ -9,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+
 
 // ── Difficulty bars (3 bars, green, like the screenshot) ──────────────────────
 function DifficultyBars() {
@@ -20,6 +22,12 @@ function DifficultyBars() {
         </View>
     );
 }
+
+const icons = [
+    'microchip',
+    'desktop',
+    'cogs'
+];
 
 const barStyles = StyleSheet.create({
     wrap: {
@@ -67,7 +75,7 @@ export default function QuizDashboard() {
             <View style={styles.subjectHeader}>
                 <View style={styles.subjectIconWrap}>
                     <Text style={styles.subjectIcon}>
-                        {'🖥️'}
+                        <FontAwesome name="desktop" size={24} color="white" />
                     </Text>
                 </View>
                 <View style={styles.subjectInfo}>
@@ -86,7 +94,7 @@ export default function QuizDashboard() {
                     <Text style={styles.emptyText}>No quizzes available</Text>
                 </View>
             ) : (
-                quizzes.map((quiz: any) => (
+                quizzes.map((quiz: any, index: number) => (
                     <TouchableOpacity
                         key={quiz.id}
                         style={styles.card}
@@ -100,7 +108,7 @@ export default function QuizDashboard() {
                             {/* Left icon */}
                             <View style={styles.iconWrapper}>
                                 <Text style={styles.icon}>
-                                    {quiz.icons || '📘'}
+                                    <FontAwesome5 name={icons[index % icons.length]} size={14} color="#4f46e5" />
                                 </Text>
                             </View>
 
