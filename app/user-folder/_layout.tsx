@@ -1,11 +1,12 @@
 import Sidebar from '@/components/Sidebar';
 import { COLORS } from '@/constants/colors';
 import useAuth from '@/hooks/useAuth';
+import { API_BASE_URL } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import { useEffect } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type IconProps = { color: string; size: number };
 
@@ -26,8 +27,7 @@ export default function Layout() {
         }
     }, [user, loading, router]);
 
-    const AVATAR_BASE = 'https://dashquiz.ralphcabanero.com/storage/images/profiles/';
-    const LOCAL_AVATAR_BASE = 'http://127.0.0.1:8000/storage/images/profiles/';
+    const LOCAL_AVATAR_BASE = `${API_BASE_URL}/storage/images/profiles/`;
 
     if (loading || !user) return null;
     const avatarUri = user.profile_photo
@@ -65,12 +65,12 @@ export default function Layout() {
                 /* ── Header ── */
                 headerShown: !hideHeader,
                 headerStyle: {
-                    backgroundColor: '#1a1740',
+                    backgroundColor: '#fff',
                     height: 56,
                     shadowOpacity: 0,
                     borderBottomWidth: 1,
                 },
-                headerTintColor: '#fff',
+                headerTintColor: 'black',
 
                 /* ── Header left: hamburger is auto, tintColor makes it white ── */
 
@@ -80,9 +80,6 @@ export default function Layout() {
                     : () => (
                         <View style={styles.headerRight}>
                             <View style={styles.headerTextWrap}>
-                                <Text style={styles.headerName} numberOfLines={1}>
-                                    {user.full_name}
-                                </Text>
                             </View>
 
                             <TouchableOpacity onPress={() => router.push('/user-folder/profile')}>
@@ -197,7 +194,6 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     headerName: {
-        color: '#ffffff',
         fontWeight: '700',
         fontSize: 13,
         maxWidth: 120,
@@ -209,10 +205,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     headerAvatar: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderColor: 'rgba(102, 126, 234, 0.15)',
+
     },
 });
