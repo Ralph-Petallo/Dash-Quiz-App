@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -205,13 +205,6 @@ export default function EditProfileModal({ visible, onClose, onSaved, initialDat
                             autoCapitalize="none"
                         />
                         {errors.email && <Text style={s.error}>{errors.email}</Text>}
-
-                        {/* Divider */}
-                        <View style={s.sectionDivider}>
-                            <View style={s.divLine} />
-                            <Text style={s.divLabel}>Change Password</Text>
-                            <View style={s.divLine} />
-                        </View>
 
                         {/* Current Password */}
                         <Text style={s.label}>Current Password</Text>

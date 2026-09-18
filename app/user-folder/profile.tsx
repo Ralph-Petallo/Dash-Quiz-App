@@ -4,10 +4,10 @@ import useAuth from '@/hooks/useAuth';
 import useData from '@/hooks/useData';
 import { API_BASE_URL } from '@/services/api';
 import { uploadProfilePhoto } from '@/store/profileStore';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -16,35 +16,91 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Frosted Noir Palette ─────────────────────────────────────────────────────
 
-const PURPLE = '#6366f1';
+const WHITE = '#FFFFFF';
+const BLACK = '#000000';
+const LIGHT_GRAY = '#D3D3D3';
+const GRAY = '#A9A9A9';
+const DARK_GRAY = '#696969';
+
+// Frosted surfaces
+const GLASS = 'rgba(0,0,0,0.035)';
+const GLASS_LIGHT = 'rgba(0,0,0,0.06)';
+const GLASS_BORDER = 'rgba(0,0,0,0.10)';
+const GLASS_BORDER_SOFT = 'rgba(0,0,0,0.07)';
+
 const LOCAL_AVATAR_BASE = `${API_BASE_URL}/storage/images/profiles/`;
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <View style={s.infoRow}>
-    <Text style={s.infoLabel}>{label}</Text>
-    <Text style={s.infoValue}>{value}</Text>
+// ─── Info Row ─────────────────────────────────────────────────────────────────
+
+const InfoRow = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+}) => (
+  <View style={styles.infoRow}>
+    <View style={styles.infoLeft}>
+      <View style={styles.infoIcon}>
+        <Ionicons
+          name={icon}
+          size={15}
+          color={DARK_GRAY}
+        />
+      </View>
+
+      <Text style={styles.infoLabel}>
+        {label}
+      </Text>
+    </View>
+
+    <Text
+      style={styles.infoValue}
+      numberOfLines={1}
+    >
+      {value}
+    </Text>
   </View>
 );
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { user, setUser, fetchUser } = useAuth();
-  const { stats, fetchStats } = useData();
+  const {
+    user,
+    setUser,
+    fetchUser,
+  } = useAuth();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const {
+    stats,
+    fetchStats,
+  } = useData();
 
-  const [editVisible, setEditVisible] = useState(false);
-  const [deleteVisible, setDeleteVisible] = useState(false);
-  const [photoUploading, setPhotoUploading] = useState(false);
+  const fadeAnim =
+    useRef(new Animated.Value(0)).current;
 
-  // ✅ REFRESH STATS EVERY TIME SCREEN IS FOCUSED
+  const [editVisible, setEditVisible] =
+    useState(false);
+
+  const [deleteVisible, setDeleteVisible] =
+    useState(false);
+
+  const [photoUploading, setPhotoUploading] =
+    useState(false);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Refresh whenever profile page is focused
+  // ─────────────────────────────────────────────────────────────────────────
+
   useFocusEffect(
     useCallback(() => {
       fetchStats();
@@ -52,8 +108,14 @@ export default function ProfilePage() {
     }, [fetchStats, fetchUser])
   );
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Fade in
+  // ─────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (user) {
+      fadeAnim.setValue(0);
+
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 400,
@@ -62,42 +124,67 @@ export default function ProfilePage() {
     }
   }, [user, fadeAnim]);
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Loading
+  // ─────────────────────────────────────────────────────────────────────────
+
   if (!user) {
     return (
-      <SafeAreaView style={s.center}>
-        <Text style={s.loadingText}>Loading profile...</Text>
+      <SafeAreaView style={styles.center}>
+        <View style={styles.loadingIcon}>
+          <Ionicons
+            name="person-outline"
+            size={22}
+            color={BLACK}
+          />
+        </View>
+
+        <Text style={styles.loadingText}>
+          Loading profile...
+        </Text>
       </SafeAreaView>
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Profile data
+  // ─────────────────────────────────────────────────────────────────────────
 
   const avatarUri = !user.profile_photo
     ? `${LOCAL_AVATAR_BASE}default.png`
     : `${LOCAL_AVATAR_BASE}${user.profile_photo}`;
 
   const dateJoined = user.created_at
-    ? new Date(user.created_at).toLocaleDateString('en-US', {
+    ? new Date(
+      user.created_at
+    ).toLocaleDateString('en-US', {
       month: 'numeric',
       day: 'numeric',
       year: 'numeric',
     })
     : '—';
 
-  const quizzesTaken = stats?.completed_quizzes ?? user.quizzes_taken ?? '—';
+  const quizzesTaken =
+    stats?.completed_quizzes ??
+    user.quizzes_taken ??
+    '—';
 
-  const averageScore = stats?.average_score != null
-    ? `${Math.round(stats.average_score)}%`
-    : '—';
-
-  // ── Avatar picker ─────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Pick avatar
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handlePickAvatar = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const {
+      status,
+    } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== 'granted') {
       Alert.alert(
         'Permission required',
         'Please allow access to your photo library.'
       );
+
       return;
     }
 
@@ -110,7 +197,9 @@ export default function ProfilePage() {
         quality: 0.8,
       });
 
-    if (result.canceled) return;
+    if (result.canceled) {
+      return;
+    }
 
     const asset = result.assets[0];
 
@@ -118,15 +207,19 @@ export default function ProfilePage() {
       asset.mimeType ??
       'image/jpeg';
 
-    console.log('Selected asset:', asset);
-
     setPhotoUploading(true);
 
     try {
-      const res = await uploadProfilePhoto(asset, mimeType);
+      const res =
+        await uploadProfilePhoto(
+          asset,
+          mimeType
+        );
 
       setUser((prev: any) => ({
-        ...prev, profile_photo: res.new_photo,
+        ...prev,
+        profile_photo:
+          res.new_photo,
       }));
     } catch {
       Alert.alert(
@@ -138,75 +231,241 @@ export default function ProfilePage() {
     }
   };
 
-  const handleProfileSaved = (updatedUser: Record<string, any>) => {
-    setUser((prev: any) => ({ ...prev, ...updatedUser }));
+  // ─────────────────────────────────────────────────────────────────────────
+  // Profile saved
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleProfileSaved = (
+    updatedUser: Record<string, any>
+  ) => {
+    setUser((prev: any) => ({
+      ...prev,
+      ...updatedUser,
+    }));
   };
 
   // ─────────────────────────────────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.scroll}>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={
+          styles.scroll
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+            },
+          ]}
+        >
 
-        <Animated.View style={[s.card, { opacity: fadeAnim }]}>
+          {/* ─────────────────────────────────────────────────────
+                        PROFILE HEADER
+                    ───────────────────────────────────────────────────── */}
 
-          {/* Avatar */}
-          <TouchableOpacity onPress={handlePickAvatar} disabled={photoUploading}>
-            <View style={s.avatarRing}>
-              <Image source={{ uri: avatarUri }} style={s.avatar} />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.profileHeader}>
 
-          {/* Name */}
-          <Text style={s.name}>{user.first_name}</Text>
-          <Text style={s.email}>{user.email}</Text>
+            {/* Avatar */}
+            <TouchableOpacity
+              onPress={handlePickAvatar}
+              disabled={photoUploading}
+              activeOpacity={0.85}
+              style={styles.avatarTouchable}
+            >
+              <View
+                style={
+                  styles.avatarWrap
+                }
+              >
+                <View
+                  style={
+                    styles.avatarRing
+                  }
+                >
+                  <Image
+                    source={{
+                      uri: avatarUri,
+                    }}
+                    style={
+                      styles.avatar
+                    }
+                  />
+                </View>
 
-          {/* Info */}
-          <View style={s.infoBox}>
-            <InfoRow label="DATE JOINED" value={dateJoined} />
-            <View style={s.rowSep} />
-            <InfoRow label="QUIZZES TAKEN" value={String(quizzesTaken)} />
+                {/* Camera Badge */}
+                <View
+                  style={[
+                    styles.cameraBadge,
+                    photoUploading &&
+                    styles.cameraBadgeUploading,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      photoUploading
+                        ? 'sync'
+                        : 'camera'
+                    }
+                    size={
+                      photoUploading
+                        ? 14
+                        : 13
+                    }
+                    color={
+                      photoUploading
+                        ? WHITE
+                        : BLACK
+                    }
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Name */}
+            <Text style={styles.name}>
+              {user.first_name}
+            </Text>
+
+            {/* Email */}
+            <Text style={styles.email}>
+              {user.email}
+            </Text>
+
           </View>
 
-          {/* Buttons */}
-          <View style={s.btnRow}>
-            <TouchableOpacity onPress={() => setEditVisible(true)} style={s.btnEdit}>
+          {/* ─────────────────────────────────────────────────────
+                        DIVIDER
+                    ───────────────────────────────────────────────────── */}
+
+          <View style={styles.divider} />
+
+          {/* ─────────────────────────────────────────────────────
+                        PROFILE INFORMATION
+                    ───────────────────────────────────────────────────── */}
+
+          <View style={styles.infoBox}>
+
+            <InfoRow
+              icon="calendar"
+              label="DATE JOINED"
+              value={dateJoined}
+            />
+
+            <View
+              style={styles.rowSep}
+            />
+
+            <InfoRow
+              icon="clipboard"
+              label="QUIZZES TAKEN"
+              value={String(
+                quizzesTaken
+              )}
+            />
+
+          </View>
+
+          {/* ─────────────────────────────────────────────────────
+                        ACTION BUTTONS
+                    ───────────────────────────────────────────────────── */}
+
+          <View style={styles.btnRow}>
+
+            {/* Edit */}
+            <TouchableOpacity
+              onPress={() =>
+                setEditVisible(
+                  true
+                )
+              }
+              style={
+                styles.btnEdit
+              }
+              activeOpacity={0.8}
+            >
               <FontAwesome5
-                name="edit"
-                size={18}
-                color="#fff"
+                name="pen"
+                size={14}
+                color={WHITE}
               />
-              <Text style={s.btnEditText}>Edit Profile</Text>
+
+              <Text
+                style={
+                  styles.btnEditText
+                }
+              >
+                Edit Profile
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setDeleteVisible(true)} style={s.btnDelete}>
+            {/* Delete */}
+            <TouchableOpacity
+              onPress={() =>
+                setDeleteVisible(
+                  true
+                )
+              }
+              style={
+                styles.btnDelete
+              }
+              activeOpacity={0.8}
+            >
               <FontAwesome5
                 name="trash"
-                size={12}
-                color="#e53935"
+                size={13}
+                color={BLACK}
               />
-              <Text style={s.btnDeleteText}>Delete Account</Text>
+
+              <Text
+                style={
+                  styles.btnDeleteText
+                }
+              >
+                Delete Account
+              </Text>
             </TouchableOpacity>
+
           </View>
 
         </Animated.View>
-
       </ScrollView>
+
+      {/* ─────────────────────────────────────────────────────────────
+                EDIT PROFILE MODAL
+            ───────────────────────────────────────────────────────────── */}
 
       <EditProfileModal
         visible={editVisible}
-        onClose={() => setEditVisible(false)}
+        onClose={() =>
+          setEditVisible(false)
+        }
         onSaved={handleProfileSaved}
         initialData={{
-          first_name: user.first_name ?? '',
-          last_name: user.last_name ?? '',
-          email: user.email ?? '',
+          first_name:
+            user.first_name ?? '',
+          last_name:
+            user.last_name ?? '',
+          email:
+            user.email ?? '',
         }}
       />
 
+      {/* ─────────────────────────────────────────────────────────────
+                DELETE ACCOUNT MODAL
+            ───────────────────────────────────────────────────────────── */}
+
       <DeleteAccountModal
         visible={deleteVisible}
-        onClose={() => setDeleteVisible(false)}
+        onClose={() =>
+          setDeleteVisible(false)
+        }
       />
     </SafeAreaView>
   );
@@ -214,91 +473,285 @@ export default function ProfilePage() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f1f5f9' },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' },
-  loadingText: { fontSize: 14, color: '#94a3b8', fontWeight: '600' },
+const styles = StyleSheet.create({
 
-  // Card
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 28,
-    flexDirection: 'column',
-    alignItems: 'center',
-    height: 'auto',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAGE
+  // ─────────────────────────────────────────────────────────────────────────
+
+  safe: {
+    flex: 1,
+    backgroundColor: WHITE,
   },
 
-  // Avatar
-  avatarWrap: { position: 'relative', marginBottom: 14 },
-  avatarRing: { padding: 3, borderRadius: 50, borderWidth: 3, borderColor: PURPLE },
-  avatar: { width: 90, height: 90, borderRadius: 45 },
+  container: {
+    flex: 1,
+    backgroundColor: WHITE,
+  },
+
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 40,
+  },
+
+  content: {
+    width: '100%',
+    alignItems: 'center',
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOADING
+  // ─────────────────────────────────────────────────────────────────────────
+
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+  },
+
+  loadingIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: BLACK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
+  loadingText: {
+    fontSize: 12,
+    color: DARK_GRAY,
+    fontWeight: '600',
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PROFILE HEADER
+  // ─────────────────────────────────────────────────────────────────────────
+
+  profileHeader: {
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: 4,
+    paddingBottom: 18,
+  },
+
+  avatarTouchable: {
+    marginBottom: 14,
+  },
+
+  avatarWrap: {
+    position: 'relative',
+  },
+
+  avatarRing: {
+    padding: 3,
+    borderRadius: 54,
+    borderWidth: 2,
+    borderColor: BLACK,
+    backgroundColor: WHITE,
+  },
+
+  avatar: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+  },
 
   cameraBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: PURPLE,
-    justifyContent: 'center',
+    right: -3,
+    bottom: -2,
+
+    width: 34,
+    height: 34,
+
+    borderRadius: 17,
+
+    backgroundColor: WHITE,
+
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+    justifyContent: 'center',
+
+    borderWidth: 3,
+    borderColor: BLACK,
+
+    shadowColor: BLACK,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cameraBadgeUploading: { backgroundColor: '#22c55e' },
 
-  // Name & Email
-  name: { fontSize: 20, fontWeight: '700', color: '#0f172a', marginBottom: 3 },
-  email: { fontSize: 13, color: '#6b7280', marginBottom: 20 },
+  cameraBadgeUploading: {
+    backgroundColor: BLACK,
+    borderColor: WHITE,
+  },
 
-  // Info box
+  name: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: BLACK,
+    letterSpacing: -0.7,
+    marginBottom: 4,
+  },
+
+  email: {
+    fontSize: 13,
+    color: DARK_GRAY,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DIVIDER
+  // ─────────────────────────────────────────────────────────────────────────
+
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: LIGHT_GRAY,
+    marginBottom: 32,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INFORMATION
+  // ─────────────────────────────────────────────────────────────────────────
+
   infoBox: {
     width: '100%',
-    backgroundColor: '#f8fafc',
-    borderRadius: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    marginBottom: 22,
-    borderWidth: 1,
-    borderColor: '#f0edff',
-  },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
-  infoLabel: { fontSize: 10, fontWeight: '700', color: '#94a3b8', letterSpacing: 0.8 },
-  infoValue: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
-  rowSep: { height: 1, backgroundColor: '#f0edff' },
+    backgroundColor: GLASS,
 
-  // Buttons
-  btnRow: { flexDirection: 'row', gap: 10, width: '100%' },
+    borderRadius: 15,
+
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+
+    marginBottom: 28,
+
+    overflow: 'hidden',
+  },
+
+  infoRow: {
+    minHeight: 62,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+
+  infoLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  infoIcon: {
+    width: 34,
+    height: 34,
+
+    borderRadius: 9,
+
+    backgroundColor: GLASS_LIGHT,
+
+    borderWidth: 1,
+    borderColor: GLASS_BORDER_SOFT,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    marginRight: 10,
+  },
+
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: DARK_GRAY,
+    letterSpacing: 0.7,
+  },
+
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: BLACK,
+    marginLeft: 12,
+    maxWidth: '45%',
+  },
+
+  rowSep: {
+    height: 1,
+    backgroundColor: GLASS_BORDER,
+    marginHorizontal: 14,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BUTTONS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  btnRow: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 12,
+  },
+
   btnEdit: {
     flex: 1,
+
+    minHeight: 56,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: PURPLE,
-    paddingVertical: 13,
-    borderRadius: 12,
+
+    gap: 8,
+
+    backgroundColor: BLACK,
+
+    paddingVertical: 14,
+
+    borderRadius: 14,
+
+    borderWidth: 1,
+    borderColor: BLACK,
   },
-  btnEditText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  btnEditText: {
+    color: WHITE,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+
   btnDelete: {
     flex: 1,
+
+    minHeight: 56,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#fff',
-    paddingVertical: 13,
-    borderRadius: 12,
+
+    gap: 8,
+
+    backgroundColor: WHITE,
+
+    paddingVertical: 14,
+
+    borderRadius: 14,
+
     borderWidth: 1,
-    borderColor: '#fee2e2',
+    borderColor: BLACK,
   },
-  btnDeleteText: { color: '#ef4444', fontWeight: '700', fontSize: 14 },
+
+  btnDeleteText: {
+    color: BLACK,
+    fontWeight: '800',
+    fontSize: 14,
+  },
 });

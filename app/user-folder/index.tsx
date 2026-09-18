@@ -2,9 +2,8 @@ import useAuth from "@/hooks/useAuth";
 import useData from "@/hooks/useData";
 import { API_BASE_URL } from "@/services/api";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Animated,
     FlatList,
@@ -15,21 +14,38 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Frosted Noir Palette ─────────────────────────────────────────────────────
 
-const PURPLE = "#6366f1";
-const GOLD_COLOR = "#f59e0b";
-const SILVER_COLOR = "#94a3b8";
-const BRONZE_COLOR = "#c97f4a";
-const LOCAL_AVATAR_BASE = `${API_BASE_URL}/storage/images/profiles/`;
+const WHITE = "#FFFFFF";
+const BLACK = "#000000";
+const LIGHT_GRAY = "#D3D3D3";
+const GRAY = "#A9A9A9";
+const DARK_GRAY = "#696969";
 
-const getAvatar = (img?: string) => (img ? `${LOCAL_AVATAR_BASE}${img}` : `${LOCAL_AVATAR_BASE}default.png`);
+// Frosted surfaces
+const GLASS = "rgba(0,0,0,0.035)";
+const GLASS_LIGHT = "rgba(0,0,0,0.06)";
+const GLASS_BORDER = "rgba(0,0,0,0.10)";
+const GLASS_BORDER_LIGHT = "rgba(0,0,0,0.0  7)";
 
-const MEDAL_COLORS = [GOLD_COLOR, SILVER_COLOR, BRONZE_COLOR];
+const LOCAL_AVATAR_BASE =`${API_BASE_URL}/storage/images/profiles/`;
+
+const getAvatar = (img?: string) =>
+    img
+        ? `${LOCAL_AVATAR_BASE}${img}`
+        : `${LOCAL_AVATAR_BASE}default.png`;
+
+const MEDAL_COLORS = [
+    BLACK,
+    DARK_GRAY,
+    GRAY,
+];
+
 const MEDAL_ICONS = ["🥇", "🥈", "🥉"];
+
 const PODIUM_HEIGHTS = [90, 64, 50];
 const AVATAR_SIZES = [60, 48, 42];
 
@@ -43,54 +59,121 @@ const YouBadge = () => (
 
 // ─── Podium Item ──────────────────────────────────────────────────────────────
 
-const PodiumItem = ({ item, index }: { item: any; index: number }) => {
+const PodiumItem = ({
+    item,
+    index,
+}: {
+    item: any;
+    index: number;
+}) => {
     const size = AVATAR_SIZES[index];
     const color = MEDAL_COLORS[index];
     const height = PODIUM_HEIGHTS[index];
 
     return (
         <View style={lb.podiumCol}>
-            <View style={{ position: "relative", marginBottom: 4 }}>
+            <View style={styles.podiumAvatarWrap}>
                 <Image
-                    source={{ uri: getAvatar(item.profile_photo) }}
-                    style={[lb.podiumAvatar, { width: size, height: size, borderRadius: size / 2, borderColor: color }]}
+                    source={{
+                        uri: getAvatar(item.profile_photo),
+                    }}
+                    style={[
+                        lb.podiumAvatar,
+                        {
+                            width: size,
+                            height: size,
+                            borderRadius: size / 2,
+                            borderColor: color,
+                        },
+                    ]}
                 />
-                <Text style={lb.podiumMedal}>{MEDAL_ICONS[index]}</Text>
+
+                <Text style={lb.podiumMedal}>
+                    {MEDAL_ICONS[index]}
+                </Text>
             </View>
 
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, flexWrap: "wrap", justifyContent: "center" }}>
-                <Text style={lb.podiumName} numberOfLines={1}>{item.name}</Text>
+            <View style={styles.podiumNameRow}>
+                <Text
+                    style={lb.podiumName}
+                    numberOfLines={1}
+                >
+                    {item.name}
+                </Text>
+
                 {item.isYou && <YouBadge />}
             </View>
 
-            <Text style={lb.podiumScore}>{item.score}/10</Text>
+            <Text style={lb.podiumScore}>
+                {item.score}/10
+            </Text>
 
-            {/* the bar hehe */}
-            <View style={[lb.podiumBar, { height, backgroundColor: color }]} />
+            <View
+                style={[
+                    lb.podiumBar,
+                    {
+                        height,
+                        backgroundColor: color,
+                    },
+                ]}
+            />
         </View>
     );
 };
 
 // ─── Score Ring ───────────────────────────────────────────────────────────────
 
-const ScoreRing = ({ score }: { score: number }) => {
-    const color = score >= 7 ? PURPLE : "#f43f5e";
+const ScoreRing = ({
+    score,
+}: {
+    score: number;
+}) => {
+    const color =
+        score >= 7
+            ? BLACK
+            : GRAY;
+
     return (
         <View style={sr.wrap}>
             <View style={sr.track} />
-            <View style={[sr.fill, { borderColor: color }]} />
-            <Text style={[sr.text, { color }]}>{score}</Text>
+
+            <View
+                style={[
+                    sr.fill,
+                    {
+                        borderColor: color,
+                    },
+                ]}
+            />
+
+            <Text
+                style={[
+                    sr.text,
+                    {
+                        color,
+                    },
+                ]}
+            >
+                {score}
+            </Text>
         </View>
     );
 };
 
 // ─── Rank Badge ───────────────────────────────────────────────────────────────
 
-const RankBadge = ({ rank }: { rank: number | null }) => (
+const RankBadge = ({
+    rank,
+}: {
+    rank: number | null;
+}) => (
     <View style={lb.rankBadge}>
         <View style={lb.rankDot} />
+
         <Text style={lb.rankText}>
-            {rank ? `Rank #${rank}` : "Unranked"}
+            {rank
+                ? `Rank #${rank}`
+                : "Unranked"}
         </Text>
     </View>
 );
@@ -98,12 +181,22 @@ const RankBadge = ({ rank }: { rank: number | null }) => (
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LeaderboardScreen() {
-    const { leaders, fetchLeaderboard, loadingLeaderboard } = useData();
+    const {
+        leaders,
+        fetchLeaderboard,
+        loadingLeaderboard,
+    } = useData();
+
     const { user } = useAuth();
+
     const [search, setSearch] = useState("");
-    const [selectedQuiz, setSelectedQuiz] = useState(""); 
-    const [modalVisible, setModalVisible] = useState(false); // Controls our filter modal popup
-    const fade = useRef(new Animated.Value(0)).current;
+    const [selectedQuiz, setSelectedQuiz] = useState("");
+    const [modalVisible, setModalVisible] =
+        useState(false);
+
+    const fade = useRef(
+        new Animated.Value(0)
+    ).current;
 
     useFocusEffect(
         useCallback(() => {
@@ -112,8 +205,11 @@ export default function LeaderboardScreen() {
     );
 
     useEffect(() => {
-        if (!loadingLeaderboard && leaders.length > 0) {
-            fade.setValue(0); 
+        if (
+            !loadingLeaderboard &&
+            leaders.length > 0
+        ) {
+            fade.setValue(0);
 
             Animated.timing(fade, {
                 toValue: 1,
@@ -121,373 +217,1180 @@ export default function LeaderboardScreen() {
                 useNativeDriver: true,
             }).start();
         }
-    }, [loadingLeaderboard, leaders.length, fade]);
+    }, [
+        loadingLeaderboard,
+        leaders.length,
+        fade,
+    ]);
 
-    // Unique quiz list parsing
+    // ─── Unique quiz list ─────────────────────────────────────────────────────
+
     const availableQuizzes = useMemo(() => {
-        const titles = leaders.map((item: any) => item.quiz_title).filter(Boolean);
-        return ["All Quizzes", ...new Set(titles)];
+        const titles = leaders
+            .map(
+                (item: any) =>
+                    item.quiz_title
+            )
+            .filter(Boolean);
+
+        return [
+            "All Quizzes",
+            ...new Set(titles),
+        ];
     }, [leaders]);
 
-    // Filter by Dropdown Option & score sorting
+    // ─── Filter and sort ──────────────────────────────────────────────────────
+
     const baseFilteredAndSorted = useMemo(() => {
         let list = [...leaders];
-        
-        if (selectedQuiz && selectedQuiz !== "All Quizzes") {
-            list = list.filter((item) => item.quiz_title === selectedQuiz);
+
+        if (
+            selectedQuiz &&
+            selectedQuiz !== "All Quizzes"
+        ) {
+            list = list.filter(
+                (item) =>
+                    item.quiz_title ===
+                    selectedQuiz
+            );
         }
-        
-        return list.sort((a, b) => b.score - a.score);
+
+        return list.sort(
+            (a, b) => b.score - a.score
+        );
     }, [leaders, selectedQuiz]);
 
-    // Search query parsing
+    // ─── Search ───────────────────────────────────────────────────────────────
+
     const filtered = useMemo(() => {
-        const q = search.toLowerCase().trim();
-        if (!q) return baseFilteredAndSorted;
+        const q = search
+            .toLowerCase()
+            .trim();
+
+        if (!q) {
+            return baseFilteredAndSorted;
+        }
 
         return baseFilteredAndSorted.filter(
             (l) =>
-                l.name.toLowerCase().includes(q) ||
-                l.quiz_title.toLowerCase().includes(q)
+                l.name
+                    .toLowerCase()
+                    .includes(q) ||
+                l.quiz_title
+                    .toLowerCase()
+                    .includes(q)
         );
-    }, [search, baseFilteredAndSorted]);
+    }, [
+        search,
+        baseFilteredAndSorted,
+    ]);
 
     const top3 = filtered.slice(0, 3);
     const listData = filtered.slice(3);
 
-    const podium = [top3[1], top3[0], top3[2]].filter(Boolean);
+    const podium = [
+        top3[1],
+        top3[0],
+        top3[2],
+    ].filter(Boolean);
 
-    const myRank = baseFilteredAndSorted.findIndex((l) => l.isYou);
-    const myRankDisplay = myRank >= 0 ? myRank + 1 : null;
+    const myRank =
+        baseFilteredAndSorted.findIndex(
+            (l) => l.isYou
+        );
+
+    const myRankDisplay =
+        myRank >= 0
+            ? myRank + 1
+            : null;
+
+    // ─── Greeting ─────────────────────────────────────────────────────────────
 
     const greeting = () => {
         const h = new Date().getHours();
-        if (h < 12) return "Good morning";
-        if (h < 18) return "Good afternoon";
+
+        if (h < 12) {
+            return "Good morning";
+        }
+
+        if (h < 18) {
+            return "Good afternoon";
+        }
+
         return "Good evening";
     };
+
+    // ─── Loading ──────────────────────────────────────────────────────────────
 
     if (loadingLeaderboard) {
         return (
             <View style={lb.center}>
-                <Ionicons name="trophy" size={32} color={PURPLE} />
+                <View style={styles.loadingIcon}>
+                    <Ionicons
+                        name="trophy"
+                        size={30}
+                        color={BLACK}
+                    />
+                </View>
             </View>
         );
     }
 
-    return (
-        <LinearGradient
-            colors={['#f5f7fa', '#c3cfe2']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ flex: 1, margin: 10, overflow: 'hidden' }}
-        >
-            <ScrollView style={lb.container} showsVerticalScrollIndicator={false}>
-                <Animated.View style={{ opacity: fade }}>
+    // ─── Main UI ──────────────────────────────────────────────────────────────
 
-                    {/* Welcome */}
+    return (
+        <View style={styles.screen}>
+            <ScrollView
+                style={lb.container}
+                contentContainerStyle={
+                    styles.scrollContent
+                }
+                showsVerticalScrollIndicator={false}
+            >
+                <Animated.View
+                    style={{
+                        opacity: fade,
+                    }}
+                >
+                    {/* ─────────────────────────────────────────────────────
+                        WELCOME
+                    ───────────────────────────────────────────────────── */}
+
                     <View style={lb.welcome}>
-                        <Text style={lb.welcomeGreeting}>
-                            {greeting()}, {user?.full_name ?? "there"} 👋
+                        <Text
+                            style={
+                                lb.welcomeGreeting
+                            }
+                        >
+                            {greeting()},{" "}
+                            {user?.full_name ??
+                                "there"}{" "}
+                            👋
                         </Text>
-                        <Text style={lb.welcomeSub}>
-                            See how you stack up against everyone else.
+
+                        <Text
+                            style={
+                                lb.welcomeSub
+                            }
+                        >
+                            See how you stack up
+                            against everyone
+                            else.
                         </Text>
                     </View>
 
-                    {/* Header */}
+                    {/* ─────────────────────────────────────────────────────
+                        HEADER
+                    ───────────────────────────────────────────────────── */}
+
                     <View style={lb.header}>
-                        <View style={lb.headerLeft}>
-                            <FontAwesome5 name="trophy" size={20} color={PURPLE} />
+                        <View
+                            style={
+                                lb.headerLeft
+                            }
+                        >
+                            <View
+                                style={
+                                    styles.titleIcon
+                                }
+                            >
+                                <FontAwesome5
+                                    name="trophy"
+                                    size={15}
+                                    color={BLACK}
+                                />
+                            </View>
+
                             <View>
-                                <Text style={lb.headerTitle}>Leaderboard</Text>
-                                <Text style={lb.headerSub}>
-                                    TOP {baseFilteredAndSorted.length} participants for selection
+                                <Text
+                                    style={
+                                        lb.headerTitle
+                                    }
+                                >
+                                    Leaderboard
+                                </Text>
+
+                                <Text
+                                    style={
+                                        lb.headerSub
+                                    }
+                                >
+                                    TOP{" "}
+                                    {
+                                        baseFilteredAndSorted.length
+                                    }{" "}
+                                    PARTICIPANTS
                                 </Text>
                             </View>
                         </View>
-                        <RankBadge rank={myRankDisplay} />
-                    </View>
 
-                    {/* Search Bar */}
-                    <View style={lb.searchWrap}>
-                        <Ionicons name="search-outline" size={15} color="#94a3b8" />
-                        <TextInput
-                            placeholder="Search participant..."
-                            placeholderTextColor="#94a3b8"
-                            value={search}
-                            onChangeText={setSearch}
-                            style={lb.searchInput}
+                        <RankBadge
+                            rank={myRankDisplay}
                         />
                     </View>
 
-                    {/* Modern Custom Space-Between Filter Bar */}
-                    <View style={lb.filterBarRow}>
-                        <Text style={lb.filterLabel}>Filter Results</Text>
-                        <TouchableOpacity 
-                            style={lb.selectTrigger} 
-                            onPress={() => setModalVisible(true)}
-                        >
-                            <Text style={lb.selectTriggerText} numberOfLines={1}>
-                                {selectedQuiz || "All Quizzes"}
-                            </Text>
-                            <Ionicons name="chevron-down" size={14} color="#64748b" />
-                        </TouchableOpacity>
-                    </View>
+                    {/* ─────────────────────────────────────────────────────
+                        SEARCH
+                    ───────────────────────────────────────────────────── */}
 
-                    {/* ─── PODIUM ─── */}
-                    {top3.length > 0 && (
-                        <View style={lb.podiumWrap}>
-                            {podium.map((item, i) => (
-                                <PodiumItem
-                                    key={`${item.user_id}-${i}`}
-                                    item={item}
-                                    index={i === 0 ? 1 : i === 1 ? 0 : 2}
+                    <View
+                        style={
+                            lb.searchWrap
+                        }
+                    >
+                        <Ionicons
+                            name="search-outline"
+                            size={16}
+                            color={GRAY}
+                        />
+
+                        <TextInput
+                            placeholder="Search participant..."
+                            placeholderTextColor={
+                                GRAY
+                            }
+                            value={search}
+                            onChangeText={
+                                setSearch
+                            }
+                            style={
+                                lb.searchInput
+                            }
+                        />
+
+                        {search.length > 0 && (
+                            <TouchableOpacity
+                                onPress={() =>
+                                    setSearch(
+                                        ""
+                                    )
+                                }
+                            >
+                                <Ionicons
+                                    name="close-circle"
+                                    size={17}
+                                    color={
+                                        GRAY
+                                    }
                                 />
-                            ))}
-                        </View>
-                    )}
-
-                    {/* ─── LIST VIEW ─── */}
-                    <View style={lb.list}>
-                        {listData.map((item) => {
-                            const rank = baseFilteredAndSorted.indexOf(item) + 1;
-
-                            return (
-                                <View
-                                    key={`${item.user_id}-${item.id}`}
-                                    style={[lb.row, item.isYou && lb.rowHighlight]}
-                                >
-                                    <Text style={lb.rankNum}>{rank}</Text>
-
-                                    <Image
-                                        source={{ uri: getAvatar(item.profile_photo) }}
-                                        style={lb.avatar}
-                                    />
-
-                                    <View style={lb.info}>
-                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                                            <Text style={lb.name} numberOfLines={1}>
-                                                {item.name}
-                                            </Text>
-                                            {item.isYou && <YouBadge />}
-                                        </View>
-                                        <Text style={lb.quizTitle} numberOfLines={1}>
-                                            {item.quiz_title}
-                                        </Text>
-                                    </View>
-
-                                    <ScoreRing score={item.score} />
-                                </View>
-                            );
-                        })}
-
-                        {filtered.length === 0 && (
-                            <Text style={lb.empty}>No results found.</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
 
+                    {/* ─────────────────────────────────────────────────────
+                        FILTER
+                    ───────────────────────────────────────────────────── */}
+
+                    <View
+                        style={
+                            lb.filterBarRow
+                        }
+                    >
+                        <View
+                            style={
+                                styles.filterLeft
+                            }
+                        >
+                            <Ionicons
+                                name="options-outline"
+                                size={15}
+                                color={
+                                    DARK_GRAY
+                                }
+                            />
+
+                            <Text
+                                style={
+                                    lb.filterLabel
+                                }
+                            >
+                                Filter Results
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={
+                                lb.selectTrigger
+                            }
+                            onPress={() =>
+                                setModalVisible(
+                                    true
+                                )
+                            }
+                            activeOpacity={0.75}
+                        >
+                            <Text
+                                style={
+                                    lb.selectTriggerText
+                                }
+                                numberOfLines={1}
+                            >
+                                {selectedQuiz ||
+                                    "All Quizzes"}
+                            </Text>
+
+                            <Ionicons
+                                name="chevron-down"
+                                size={14}
+                                color={
+                                    DARK_GRAY
+                                }
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* ─────────────────────────────────────────────────────
+                        PODIUM
+                    ───────────────────────────────────────────────────── */}
+
+                    {top3.length > 0 && (
+                        <View
+                            style={
+                                lb.podiumPanel
+                            }
+                        >
+                            <View
+                                style={
+                                    styles.sectionHeader
+                                }
+                            >
+                                <Text
+                                    style={
+                                        styles.sectionEyebrow
+                                    }
+                                >
+                                    TOP PERFORMERS
+                                </Text>
+
+                                <View
+                                    style={
+                                        styles.sectionLine
+                                    }
+                                />
+                            </View>
+
+                            <View
+                                style={
+                                    lb.podiumWrap
+                                }
+                            >
+                                {podium.map(
+                                    (
+                                        item,
+                                        i
+                                    ) => (
+                                        <PodiumItem
+                                            key={`${item.user_id}-${i}`}
+                                            item={
+                                                item
+                                            }
+                                            index={
+                                                i ===
+                                                    0
+                                                    ? 1
+                                                    : i ===
+                                                        1
+                                                        ? 0
+                                                        : 2
+                                            }
+                                        />
+                                    )
+                                )}
+                            </View>
+                        </View>
+                    )}
+
+                    {/* ─────────────────────────────────────────────────────
+                        LEADERBOARD LIST
+                    ───────────────────────────────────────────────────── */}
+
+                    <View style={lb.list}>
+                        {listData.map(
+                            (item) => {
+                                const rank =
+                                    baseFilteredAndSorted.indexOf(
+                                        item
+                                    ) + 1;
+
+                                return (
+                                    <View
+                                        key={`${item.user_id}-${item.id}`}
+                                        style={[
+                                            lb.row,
+                                            item.isYou &&
+                                            lb.rowHighlight,
+                                        ]}
+                                    >
+                                        <View
+                                            style={
+                                                styles.rankColumn
+                                            }
+                                        >
+                                            <Text
+                                                style={
+                                                    lb.rankNum
+                                                }
+                                            >
+                                                {rank}
+                                            </Text>
+                                        </View>
+
+                                        <Image
+                                            source={{
+                                                uri: getAvatar(
+                                                    item.profile_photo
+                                                ),
+                                            }}
+                                            style={
+                                                lb.avatar
+                                            }
+                                        />
+
+                                        <View
+                                            style={
+                                                lb.info
+                                            }
+                                        >
+                                            <View
+                                                style={
+                                                    styles.nameRow
+                                                }
+                                            >
+                                                <Text
+                                                    style={
+                                                        lb.name
+                                                    }
+                                                    numberOfLines={
+                                                        1
+                                                    }
+                                                >
+                                                    {
+                                                        item.name
+                                                    }
+                                                </Text>
+
+                                                {item.isYou && (
+                                                    <YouBadge />
+                                                )}
+                                            </View>
+
+                                            <Text
+                                                style={
+                                                    lb.quizTitle
+                                                }
+                                                numberOfLines={
+                                                    1
+                                                }
+                                            >
+                                                {
+                                                    item.quiz_title
+                                                }
+                                            </Text>
+                                        </View>
+
+                                        <ScoreRing
+                                            score={
+                                                item.score
+                                            }
+                                        />
+                                    </View>
+                                );
+                            }
+                        )}
+
+                        {filtered.length === 0 && (
+                            <View
+                                style={
+                                    styles.emptyPanel
+                                }
+                            >
+                                <Ionicons
+                                    name="search-outline"
+                                    size={26}
+                                    color={
+                                        LIGHT_GRAY
+                                    }
+                                />
+
+                                <Text
+                                    style={
+                                        lb.empty
+                                    }
+                                >
+                                    No results found.
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </Animated.View>
             </ScrollView>
 
-            {/* ─── DROP DOWN FILTER MODAL OVERLAY ─── */}
+            {/* ─────────────────────────────────────────────────────────────
+                FILTER MODAL
+            ───────────────────────────────────────────────────────────── */}
+
             <Modal
                 visible={modalVisible}
                 transparent={true}
                 animationType="fade"
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() =>
+                    setModalVisible(false)
+                }
             >
-                <TouchableOpacity 
-                    style={lb.modalOverlay} 
-                    activeOpacity={1} 
-                    onPress={() => setModalVisible(false)}
+                <TouchableOpacity
+                    style={
+                        lb.modalOverlay
+                    }
+                    activeOpacity={1}
+                    onPress={() =>
+                        setModalVisible(
+                            false
+                        )
+                    }
                 >
-                    <View style={lb.modalContent}>
-                        <View style={lb.modalHeader}>
-                            <Text style={lb.modalHeaderTitle}>Select Quiz</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Ionicons name="close" size={20} color="#64748b" />
+                    <View
+                        style={
+                            lb.modalContent
+                        }
+                    >
+                        <View
+                            style={
+                                lb.modalHeader
+                            }
+                        >
+                            <View>
+                                <Text
+                                    style={
+                                        lb.modalHeaderTitle
+                                    }
+                                >
+                                    Select Quiz
+                                </Text>
+
+                                <Text
+                                    style={
+                                        styles.modalSub
+                                    }
+                                >
+                                    Choose a leaderboard
+                                    category
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={() =>
+                                    setModalVisible(
+                                        false
+                                    )
+                                }
+                                style={
+                                    styles.closeButton
+                                }
+                            >
+                                <Ionicons
+                                    name="close"
+                                    size={18}
+                                    color={
+                                        DARK_GRAY
+                                    }
+                                />
                             </TouchableOpacity>
                         </View>
-                        
+
                         <FlatList
-                            data={availableQuizzes}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        lb.modalOption,
-                                        (selectedQuiz === item || (item === "All Quizzes" && !selectedQuiz)) && lb.modalOptionSelected
-                                    ]}
-                                    onPress={() => {
-                                        setSelectedQuiz(item === "All Quizzes" ? "" : item);
-                                        setModalVisible(false);
-                                    }}
-                                >
-                                    <Text style={[
-                                        lb.modalOptionText,
-                                        (selectedQuiz === item || (item === "All Quizzes" && !selectedQuiz)) && lb.modalOptionTextSelected
-                                    ]}>
-                                        {item}
-                                    </Text>
-                                    {(selectedQuiz === item || (item === "All Quizzes" && !selectedQuiz)) && (
-                                        <Ionicons name="checkmark" size={16} color={PURPLE} />
-                                    )}
-                                </TouchableOpacity>
-                            )}
+                            data={
+                                availableQuizzes
+                            }
+                            keyExtractor={(
+                                item
+                            ) => item}
+                            showsVerticalScrollIndicator={
+                                false
+                            }
+                            renderItem={({
+                                item,
+                            }) => {
+                                const selected =
+                                    selectedQuiz ===
+                                    item ||
+                                    (item ===
+                                        "All Quizzes" &&
+                                        !selectedQuiz);
+
+                                return (
+                                    <TouchableOpacity
+                                        style={[
+                                            lb.modalOption,
+                                            selected &&
+                                            lb.modalOptionSelected,
+                                        ]}
+                                        onPress={() => {
+                                            setSelectedQuiz(
+                                                item ===
+                                                    "All Quizzes"
+                                                    ? ""
+                                                    : item
+                                            );
+
+                                            setModalVisible(
+                                                false
+                                            );
+                                        }}
+                                        activeOpacity={
+                                            0.75
+                                        }
+                                    >
+                                        <Text
+                                            style={[
+                                                lb.modalOptionText,
+                                                selected &&
+                                                lb.modalOptionTextSelected,
+                                            ]}
+                                        >
+                                            {item}
+                                        </Text>
+
+                                        {selected && (
+                                            <View
+                                                style={
+                                                    styles.checkCircle
+                                                }
+                                            >
+                                                <Ionicons
+                                                    name="checkmark"
+                                                    size={
+                                                        13
+                                                    }
+                                                    color={
+                                                        WHITE
+                                                    }
+                                                />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            }}
                         />
                     </View>
                 </TouchableOpacity>
             </Modal>
-        </LinearGradient>
+        </View>
     );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Leaderboard Styles ───────────────────────────────────────────────────────
 
 const lb = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#fff" },
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
+    container: {
+        flex: 1,
+        backgroundColor: WHITE,
+    },
 
-    welcome: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
-    welcomeGreeting: { fontSize: 18, fontWeight: "800", color: "#1e293b" },
-    welcomeSub: { fontSize: 12, color: "#64748b", marginTop: 2 },
+    center: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: WHITE,
+    },
 
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
-    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-    headerTitle: { fontSize: 20, fontWeight: "800", color: "#1e293b" },
-    headerSub: { fontSize: 11, color: "#64748b", marginTop: 1 },
+    welcome: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 14,
+    },
 
-    rankBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#ede9fe", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-    rankDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PURPLE },
-    rankText: { fontSize: 11, fontWeight: "700", color: PURPLE },
+    welcomeGreeting: {
+        fontSize: 18,
+        fontWeight: "800",
+        color: BLACK,
+        letterSpacing: -0.3,
+    },
 
-    searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fff", marginHorizontal: 16, marginBottom: 12, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: "#e2e8f0" },
-    searchInput: { flex: 1, paddingVertical: 11, fontSize: 13, color: "#1e293b" },
+    welcomeSub: {
+        fontSize: 12,
+        color: DARK_GRAY,
+        marginTop: 4,
+    },
 
-    // Dynamic Space Between Filter Styles
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingTop: 4,
+        paddingBottom: 12,
+    },
+
+    headerLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+    },
+
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: "800",
+        color: BLACK,
+        letterSpacing: -0.4,
+    },
+
+    headerSub: {
+        fontSize: 9,
+        color: DARK_GRAY,
+        marginTop: 2,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+
+    rankBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        backgroundColor: GLASS_LIGHT,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+    },
+
+    rankDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: BLACK,
+    },
+
+    rankText: {
+        fontSize: 10,
+        fontWeight: "700",
+        color: DARK_GRAY,
+    },
+
+    searchWrap: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 9,
+        backgroundColor: GLASS,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderRadius: 13,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+    },
+
+    searchInput: {
+        flex: 1,
+        paddingVertical: 11,
+        fontSize: 13,
+        color: BLACK,
+    },
+
     filterBarRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        backgroundColor: "#f8fafc",
+        backgroundColor: GLASS,
         marginHorizontal: 16,
         marginBottom: 16,
         paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 12,
+        paddingHorizontal: 12,
+        borderRadius: 13,
         borderWidth: 1,
-        borderColor: "#e2e8f0"
+        borderColor: GLASS_BORDER,
     },
+
     filterLabel: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: "700",
-        color: "#64748b",
+        color: DARK_GRAY,
         textTransform: "uppercase",
-        letterSpacing: 0.5
+        letterSpacing: 0.7,
     },
+
     selectTrigger: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        backgroundColor: "#ffffff",
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
+        backgroundColor: GLASS_LIGHT,
+        paddingHorizontal: 11,
+        paddingVertical: 7,
+        borderRadius: 9,
         borderWidth: 1,
-        borderColor: "#cbd5e1",
+        borderColor: GLASS_BORDER,
         minWidth: 140,
         maxWidth: 180,
-        gap: 6
-    },
-    selectTriggerText: {
-        fontSize: 12,
-        fontWeight: "600",
-        color: "#1e293b",
-        flex: 1
+        gap: 6,
     },
 
-    // Modal Dropdown Container Styles
+    selectTriggerText: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: DARK_GRAY,
+        flex: 1,
+    },
+
+    podiumPanel: {
+        marginHorizontal: 16,
+        marginBottom: 18,
+        borderRadius: 18,
+        backgroundColor: GLASS,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+        overflow: "hidden",
+        paddingTop: 13,
+    },
+
+    podiumWrap: {
+        flexDirection: "row",
+        alignItems: "flex-end",
+        paddingHorizontal: 10,
+        paddingTop: 8,
+        gap: 6,
+    },
+
+    podiumCol: {
+        flex: 1,
+        alignItems: "center",
+    },
+
+    podiumAvatar: {
+        borderWidth: 2,
+    },
+
+    podiumMedal: {
+        position: "absolute",
+        bottom: -5,
+        right: -5,
+        fontSize: 14,
+    },
+
+    podiumName: {
+        fontSize: 10,
+        fontWeight: "700",
+        color: BLACK,
+        textAlign: "center",
+        maxWidth: 95,
+    },
+
+    podiumScore: {
+        fontSize: 10,
+        color: DARK_GRAY,
+        fontWeight: "700",
+        marginTop: 2,
+        marginBottom: 6,
+    },
+
+    podiumBar: {
+        width: "100%",
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        opacity: 0.8,
+    },
+
+    youBadge: {
+        backgroundColor: BLACK,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+
+    youText: {
+        fontSize: 8,
+        fontWeight: "800",
+        color: WHITE,
+        letterSpacing: 0.3,
+    },
+
+    list: {
+        paddingHorizontal: 16,
+        gap: 8,
+        paddingBottom: 40,
+    },
+
+    row: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: GLASS,
+        borderRadius: 14,
+        padding: 12,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER_LIGHT,
+    },
+
+    rowHighlight: {
+        backgroundColor: GLASS_LIGHT,
+        borderColor: GLASS_BORDER,
+    },
+
+    rankNum: {
+        width: 24,
+        textAlign: "center",
+        fontSize: 12,
+        fontWeight: "700",
+        color: DARK_GRAY,
+    },
+
+    avatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: GLASS_BORDER,
+    },
+
+    info: {
+        flex: 1,
+    },
+
+    name: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: BLACK,
+    },
+
+    quizTitle: {
+        fontSize: 10,
+        color: DARK_GRAY,
+        marginTop: 2,
+    },
+
+    empty: {
+        textAlign: "center",
+        color: DARK_GRAY,
+        paddingVertical: 10,
+        fontSize: 12,
+    },
+
     modalOverlay: {
         flex: 1,
-        backgroundColor: "rgba(15, 23, 42, 0.3)",
+        backgroundColor: "rgba(0,0,0,0.45)",
         justifyContent: "center",
         alignItems: "center",
-        padding: 24
+        padding: 24,
     },
+
     modalContent: {
         width: "100%",
-        backgroundColor: "#ffffff",
-        borderRadius: 16,
-        maxHeight: "50%",
+        backgroundColor: WHITE,
+        borderRadius: 18,
+        maxHeight: "55%",
         padding: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+        shadowColor: BLACK,
+        shadowOffset: {
+            width: 0,
+            height: 12,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 25,
+        elevation: 12,
     },
+
     modalHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 12,
-        paddingBottom: 8,
+        paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: "#f1f5f9"
+        borderBottomColor:
+            GLASS_BORDER_LIGHT,
     },
+
     modalHeaderTitle: {
-        fontSize: 14,
-        fontWeight: "700",
-        color: "#0f172a"
+        fontSize: 15,
+        fontWeight: "800",
+        color: BLACK,
     },
+
     modalOption: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         paddingVertical: 12,
-        paddingHorizontal: 8,
-        borderRadius: 8
+        paddingHorizontal: 10,
+        borderRadius: 9,
+        marginBottom: 3,
     },
+
     modalOptionSelected: {
-        backgroundColor: "#f1f0ff"
+        backgroundColor: GLASS_LIGHT,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
     },
+
     modalOptionText: {
-        fontSize: 13,
-        color: "#334155",
-        fontWeight: "500"
+        fontSize: 12,
+        color: DARK_GRAY,
+        fontWeight: "500",
     },
+
     modalOptionTextSelected: {
-        color: PURPLE,
-        fontWeight: "700"
+        color: BLACK,
+        fontWeight: "700",
     },
-
-    // Podium Layout
-    podiumWrap: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 16, marginBottom: 20, gap: 8 },
-    podiumCol: { flex: 1, alignItems: "center" },
-    podiumAvatar: { borderWidth: 3 },
-    podiumMedal: { position: "absolute", bottom: -4, right: -4, fontSize: 14 },
-    podiumName: { fontSize: 11, fontWeight: "700", color: "#1e293b", textAlign: "center" },
-    podiumScore: { fontSize: 11, color: PURPLE, fontWeight: "700", marginBottom: 6 },
-    podiumBar: { width: "100%", borderTopLeftRadius: 8, borderTopRightRadius: 8 },
-
-    youBadge: { backgroundColor: PURPLE, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-    youText: { fontSize: 9, fontWeight: "700", color: "#fff" },
-
-    list: { paddingHorizontal: 16, gap: 8, paddingBottom: 30 },
-    row: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 14, padding: 12, gap: 10, borderWidth: 1, borderColor: "#e8eaf0" },
-    rowHighlight: { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" },
-    rankNum: { width: 24, textAlign: "center", fontSize: 13, fontWeight: "700", color: "#94a3b8" },
-    avatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "#e2e8f0" },
-    info: { flex: 1 },
-    name: { fontSize: 13, fontWeight: "700", color: "#1e293b" },
-    quizTitle: { fontSize: 11, color: "#94a3b8", marginTop: 1 },
-    empty: { textAlign: "center", color: "#94a3b8", paddingVertical: 24, fontSize: 13 },
 });
 
+// ─── Score Ring ───────────────────────────────────────────────────────────────
+
 const sr = StyleSheet.create({
-    wrap: { width: 36, height: 36, justifyContent: "center", alignItems: "center" },
-    track: { position: "absolute", width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: "#e2e8f0" },
-    fill: { position: "absolute", width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderTopColor: "transparent", borderRightColor: "transparent" },
-    text: { fontSize: 10, fontWeight: "800" },
+    wrap: {
+        width: 36,
+        height: 36,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    track: {
+        position: "absolute",
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 3,
+        borderColor:
+            "rgba(169,169,169,0.18)",
+    },
+
+    fill: {
+        position: "absolute",
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 3,
+        borderTopColor: "transparent",
+        borderRightColor: "transparent",
+    },
+
+    text: {
+        fontSize: 10,
+        fontWeight: "800",
+    },
+});
+
+// ─── Shared Styles ────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+    // Flat page — no outer card/container
+    screen: {
+        flex: 1,
+        backgroundColor: WHITE,
+    },
+
+    scrollContent: {
+        paddingBottom: 40,
+    },
+
+    titleIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        backgroundColor: GLASS_LIGHT,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    filterLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 7,
+    },
+
+    sectionHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 14,
+        gap: 9,
+    },
+
+    sectionEyebrow: {
+        fontSize: 9,
+        fontWeight: "800",
+        color: DARK_GRAY,
+        letterSpacing: 1.2,
+    },
+
+    sectionLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor:
+            GLASS_BORDER_LIGHT,
+    },
+
+    podiumAvatarWrap: {
+        position: "relative",
+        marginBottom: 5,
+    },
+
+    podiumNameRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        flexWrap: "wrap",
+        justifyContent: "center",
+        minHeight: 20,
+    },
+
+    nameRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+    },
+
+    rankColumn: {
+        width: 24,
+        alignItems: "center",
+    },
+
+    emptyPanel: {
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: GLASS,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER_LIGHT,
+        borderRadius: 14,
+        paddingVertical: 22,
+    },
+
+    closeButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 9,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: GLASS_LIGHT,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+    },
+
+    modalSub: {
+        color: DARK_GRAY,
+        fontSize: 10,
+        marginTop: 3,
+    },
+
+    checkCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: BLACK,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    loadingIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: GLASS_LIGHT,
+        borderWidth: 1,
+        borderColor: GLASS_BORDER,
+    },
 });

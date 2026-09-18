@@ -34,53 +34,97 @@ export async function updateProfile(
 /* ─── UPLOAD PROFILE PHOTO ───────────────── */
 
 export async function uploadProfilePhoto(
-    imageUri: string,
+    image: any,
     mimeType?: string
 ): Promise<{
     message: string;
     new_photo: string;
     new_photo_url: string;
 }> {
-    const filename = imageUri.split('/').pop() ?? `photo-${Date.now()}`;
-
-    const getMimeType = (uri: string) => {
-        const extension = uri.split('.').pop()?.toLowerCase();
-
-        switch (extension) {
-            case 'jpg':
-            case 'jpeg':
-                return 'image/jpeg';
-            case 'png':
-                return 'image/png';
-            case 'webp':
-                return 'image/webp';
-            default:
-                return 'image/jpeg';
-        }
-    };
-
-    const finalMimeType = mimeType ?? getMimeType(imageUri);
-
     const formData = new FormData();
 
-    formData.append('photo', {
-        uri: imageUri,
-        type: finalMimeType,
-        name: filename,
-    } as any);
+    try {
+        /* ─── WEB (expo --web) ───────────────── */
 
-    const res = await api.post('/profile/photo', formData,
-        {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+        if (image?.uri?.startsWith('blob:')) {
+            const response = await fetch(image.uri);
+            const blob = await response.blob();
+
+            const filename =
+                image.fileName ??
+                `photo-${Date.now()}.jpg`;
+
+            formData.append(
+                'photo',
+                blob,
+                filename
+            );
         }
-    );
-    console.log('Photo upload response:', res.data);
-    return res.data;
+
+        /* ─── MOBILE (Android / iOS) ─────────── */
+
+        else {
+            const imageUri = typeof image === 'string' ? image : image.uri;
+
+            const filename = imageUri.split('/').pop() ?? `photo-${Date.now()}.jpg`;
+
+            const getMimeType = (uri: string) => {
+                const extension = uri.split('.').pop()?.toLowerCase();
+
+                switch (extension) {
+                    case 'jpg':
+                    case 'jpeg':
+                        return 'image/jpeg';
+
+                    case 'png':
+                        return 'image/png';
+
+                    case 'webp':
+                        return 'image/webp';
+
+                    default:
+                        return 'image/jpeg';
+                }
+            };
+
+            const finalMimeType =
+                mimeType ??
+                getMimeType(imageUri);
+
+            formData.append('photo', {
+                uri: imageUri,
+                type: finalMimeType,
+                name: filename,
+            } as any);
+        }
+
+        const res = await api.post(
+            '/profile/photo',
+            formData,
+            {
+                headers: {
+                    'Content-Type':
+                        'multipart/form-data',
+                },
+            }
+        );
+
+        console.log('Photo upload response:', res.data);
+        return res.data;
+
+    } catch (error: any) {
+        console.error(
+            'Photo upload error:',
+            error.response?.data ??
+            error.message
+        );
+
+        throw error;
+    }
 }
 
 /* ─── DELETE ACCOUNT ─────────────────────── */
+
 export async function deleteAccount(): Promise<void> {
     await api.delete('/profile/delete');
 

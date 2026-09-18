@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   // content fills everything in between — no gaps, no overflow.
   safeArea: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "black",
   },
 
   /* ── Header ── */
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "orange",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },

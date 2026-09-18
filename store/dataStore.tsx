@@ -118,11 +118,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const fetchQuizzes = useCallback(async () => {
         try {
             setLoadingQuizzes(true);
-            const res = await api.get('/quizzes');
-            const { data } = res.data || [];
-
+            const { data } = await api.get('/quizzes');
+            console.log(data)
             setQuizzes(
-                data.map((quiz: any, i: number) => ({
+                data.data.map((quiz: any, i: number) => ({
                     ...quiz,
                     icons: ICONS[i % ICONS.length],
                 }))
@@ -140,7 +139,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const fetchStats = useCallback(async () => {
         try {
             setLoadingStats(true);
-            const res = await api.get('/stats');
+            const res = await api.get('/test'); // change to test(temporary) from /stats
             setStats(res.data.data || null);
         } catch (e) {
             console.error('Stats fetch error:', e);
@@ -155,7 +154,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         try {
             setLoadingRecords(true);
             const res = await api.get('/records');
-            setRecords(res.data.data || res.data.results || []);
+            const data = res.data.data || res.data.results || [];
+
+            setRecords(
+                data.map((r: any) => ({
+                    ...r,
+                    total_questions: r.total_questions ?? 10, // ✅ guarantee it's never undefined
+                }))
+            );
         } catch (e) {
             console.error('Records fetch error:', e);
         } finally {

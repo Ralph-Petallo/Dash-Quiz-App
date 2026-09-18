@@ -2,10 +2,9 @@ import useAuth from '@/hooks/useAuth';
 import api from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -13,13 +12,15 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    View
+    View,
 } from 'react-native';
 
-const INDIGO = '#6366f1';
-const INDIGO_DARK = '#4f46e5';
-const GREEN = '#22c55e';
-const GREEN_DARK = '#16a34a';
+const BLACK = '#0A0A0A';
+const WHITE = '#FFFFFF';
+const MUTED = '#737373';
+const BORDER = '#D4D4D4';
+const RED = '#DC2626';
+
 const MAX_ATTEMPTS = 3;
 const LOCKOUT_SECONDS = 30;
 
@@ -27,10 +28,14 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+    const [errors, setErrors] = useState<{
+        email?: string;
+        password?: string;
+    }>({});
     const [credentialError, setCredentialError] = useState<string | null>(null);
     const [attempts, setAttempts] = useState(0);
     const [lockSeconds, setLockSeconds] = useState(0);
+
     const lockTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const router = useRouter();
@@ -38,6 +43,7 @@ export default function LoginPage() {
 
     const startLockout = () => {
         setLockSeconds(LOCKOUT_SECONDS);
+
         lockTimer.current = setInterval(() => {
             setLockSeconds((prev) => {
                 if (prev <= 1) {
@@ -46,15 +52,19 @@ export default function LoginPage() {
                     setAttempts(0);
                     return 0;
                 }
+
                 return prev - 1;
             });
         }, 1000);
     };
 
     const validate = () => {
-        const newErrors: { email?: string; password?: string } = {};
+        const newErrors: {
+            email?: string;
+            password?: string;
+        } = {};
 
-        if (!email) {
+        if (!email.trim()) {
             newErrors.email = 'Email address is required.';
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             newErrors.email = 'Please enter a valid email address.';
@@ -65,6 +75,7 @@ export default function LoginPage() {
         }
 
         setErrors(newErrors);
+
         return Object.keys(newErrors).length === 0;
     };
 
@@ -75,25 +86,33 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const { data } = await api.post('/mobile/login', { email, password });
+            const { data } = await api.post('/mobile/login', {
+                email,
+                password,
+            });
 
             if (data?.token) {
                 await AsyncStorage.setItem('token', data.token);
                 await fetchUser();
                 router.push('/user-folder');
             } else {
-                Alert.alert('Login Failed', 'No token received');
+                setCredentialError('Unable to sign in. Please try again.');
             }
         } catch (error: any) {
+            console.error(error);
 
             const newAttempts = attempts + 1;
             setAttempts(newAttempts);
 
             if (newAttempts >= MAX_ATTEMPTS) {
                 startLockout();
-                setCredentialError(`Too many failed attempts. Please wait ${LOCKOUT_SECONDS} seconds.`);
+                setCredentialError(
+                    `Too many failed attempts. Please wait ${LOCKOUT_SECONDS} seconds.`
+                );
             } else {
-                setCredentialError('Invalid email or password. Please try again.');
+                setCredentialError(
+                    'Invalid email or password. Please try again.'
+                );
             }
         } finally {
             setLoading(false);
@@ -104,119 +123,208 @@ export default function LoginPage() {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.screen}
         >
             <ScrollView
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={styles.scroll}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                {/* ── Badge ── */}
-                <View style={styles.badgeWrap}>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeStar}>✦ </Text>
-                        <Text style={styles.badgeText}>SNSU Capstone Project</Text>
-                    </View>
-                </View>
+                <View style={styles.page}>
 
-                {/* ── Hero ── */}
-                <Text style={styles.heroText}>
-                    {'Learning is '}
-                    <Text style={styles.heroAccent}>better{'\n'}</Text>
-                    {'when we do it\n'}
-                    <Text style={styles.heroAccent}>together</Text>
-                </Text>
+                    {/* Top Branding */}
+                    <View style={styles.topBar}>
+                        <Text style={styles.logo}>DASH QUIZ</Text>
 
-                <Text style={styles.heroSub}>
-                    Practice, learn, and improve your skills with Dash Quiz.
-                </Text>
-
-                {/* ── Card ── */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>WELCOME!</Text>
-                    <Text style={styles.cardSubtitle}>Sign in to your account</Text>
-
-                    <Text style={styles.label}>Email address</Text>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            (errors.email) ? styles.inputError : null,
-                        ]}
-                        placeholder="@example.com"
-                        placeholderTextColor="grey"
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                        value={email}
-                        onChangeText={(text) => {
-                            setEmail(text);
-                            setCredentialError(null);
-                            if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-                        }}
-                    />
-                    {errors.email && <Text style={styles.error}>{errors.email}</Text>}
-
-                    <Text style={styles.label}>Password</Text>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            (errors.password) ? styles.inputError : null,
-                        ]}
-                        placeholder="••••••"
-                        placeholderTextColor="grey"
-                        secureTextEntry
-                        value={password}
-                        onChangeText={(text) => {
-                            setPassword(text);
-                            setCredentialError(null);
-                            if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
-                        }}
-                    />
-                    {errors.password && <Text style={styles.error}>{errors.password}</Text>}
-
-                    {/* ── Credential / lockout error banner ── */}
-                    {credentialError && (
-                        <View style={styles.credentialErrorBox}>
-                            <Text style={styles.credentialErrorText}>
-                                {credentialError}
+                        <View style={styles.projectTag}>
+                            <View style={styles.dot} />
+                            <Text style={styles.projectText}>
+                                SNSU CAPSTONE PROJECT
                             </Text>
                         </View>
-                    )}
-
-                    <Pressable
-                        onPress={handleLogin}
-                        disabled={loading || isLocked}
-                        style={({ pressed }) => [
-                            styles.loginBtn, loading && styles.submitting,
-                            isLocked && styles.loginBtnLocked,
-                            pressed && !isLocked && styles.loginBtnPressed,
-                        ]}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : isLocked ? (
-                            <Text style={styles.loginText}>Login</Text>
-                        ) : (
-                            <Text style={styles.loginText}>Login</Text>
-                        )}
-                    </Pressable>
-
-                    <Pressable style={styles.forgotWrap} onPress={() => router.push('/forgot')}>
-                        <Text style={styles.forgotText}>Forgot password?</Text>
-                    </Pressable>
-
-                    <View style={styles.dividerRow}>
-                        <View style={styles.line} />
-                        <Text style={styles.dividerText}>or</Text>
-                        <View style={styles.line} />
                     </View>
 
-                    <Pressable
-                        onPress={() => router.push('/register')}
-                        style={({ pressed }) => [styles.registerBtn, pressed && styles.registerBtnPressed]}
-                    >
-                        <Text style={styles.registerText}>Create account</Text>
-                    </Pressable>
+                    {/* Main */}
+                    <View style={styles.main}>
+
+                        <View style={styles.intro}>
+                            <Text style={styles.eyebrow}>WELCOME BACK</Text>
+
+                            <Text style={styles.heading}>
+                                Learning is{'\n'}
+                                <Text style={styles.headingAccent}>
+                                    better together.
+                                </Text>
+                            </Text>
+
+                            <Text style={styles.description}>
+                                Practice, learn, and improve your skills
+                                with Dash Quiz.
+                            </Text>
+                        </View>
+
+                        {/* Plain Form */}
+                        <View style={styles.form}>
+
+                            {/* Email */}
+                            <View style={styles.field}>
+                                <Text style={styles.label}>
+                                    EMAIL ADDRESS
+                                </Text>
+
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        errors.email && styles.inputError,
+                                    ]}
+                                    placeholder="you@example.com"
+                                    placeholderTextColor="#A3A3A3"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    keyboardType="email-address"
+                                    value={email}
+                                    editable={!isLocked}
+                                    onChangeText={(text) => {
+                                        setEmail(text);
+                                        setCredentialError(null);
+
+                                        if (errors.email) {
+                                            setErrors((prev) => ({
+                                                ...prev,
+                                                email: undefined,
+                                            }));
+                                        }
+                                    }}
+                                />
+
+                                {errors.email && (
+                                    <Text style={styles.error}>
+                                        {errors.email}
+                                    </Text>
+                                )}
+                            </View>
+
+                            {/* Password */}
+                            <View style={styles.field}>
+                                <View style={styles.passwordLabelRow}>
+                                    <Text style={styles.label}>
+                                        PASSWORD
+                                    </Text>
+
+                                    <Pressable
+                                        onPress={() => router.push('/forgot')}
+                                    >
+                                        <Text style={styles.forgot}>
+                                            FORGOT PASSWORD?
+                                        </Text>
+                                    </Pressable>
+                                </View>
+
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        errors.password && styles.inputError,
+                                    ]}
+                                    placeholder="••••••••"
+                                    placeholderTextColor="#A3A3A3"
+                                    secureTextEntry
+                                    value={password}
+                                    editable={!isLocked}
+                                    onChangeText={(text) => {
+                                        setPassword(text);
+                                        setCredentialError(null);
+
+                                        if (errors.password) {
+                                            setErrors((prev) => ({
+                                                ...prev,
+                                                password: undefined,
+                                            }));
+                                        }
+                                    }}
+                                />
+
+                                {errors.password && (
+                                    <Text style={styles.error}>
+                                        {errors.password}
+                                    </Text>
+                                )}
+                            </View>
+
+                            {/* Credential Error */}
+                            {credentialError && (
+                                <View style={styles.errorBanner}>
+                                    <View style={styles.errorLine} />
+
+                                    <Text style={styles.errorBannerText}>
+                                        {credentialError}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Login */}
+                            <Pressable
+                                onPress={handleLogin}
+                                disabled={loading || isLocked}
+                                style={({ pressed }) => [
+                                    styles.loginButton,
+                                    pressed &&
+                                    !loading &&
+                                    !isLocked &&
+                                    styles.loginPressed,
+                                    isLocked && styles.loginLocked,
+                                ]}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color={WHITE} />
+                                ) : (
+                                    <View style={styles.loginContent}>
+                                        <Text style={styles.loginText}>
+                                            {isLocked
+                                                ? `TRY AGAIN IN ${lockSeconds}S`
+                                                : 'SIGN IN'}
+                                        </Text>
+
+                                        {!isLocked && (
+                                            <Text style={styles.arrow}>
+                                                →
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+                            </Pressable>
+
+                            {/* Register */}
+                            <View style={styles.registerRow}>
+                                <Text style={styles.registerPrompt}>
+                                    Dont have an account?
+                                </Text>
+
+                                <Pressable
+                                    onPress={() =>
+                                        router.push('/register')
+                                    }
+                                >
+                                    <Text style={styles.registerLink}>
+                                        Create one
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Footer */}
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>
+                            © {new Date().getFullYear()} DASH QUIZ
+                        </Text>
+
+                        <View style={styles.footerLine} />
+
+                        <Text style={styles.footerText}>
+                            LEARN · PRACTICE · IMPROVE
+                        </Text>
+                    </View>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -224,198 +332,274 @@ export default function LoginPage() {
 }
 
 const styles = StyleSheet.create({
-    flex: {
+    screen: {
         flex: 1,
+        backgroundColor: WHITE,
     },
 
-    scrollContent: {
-        justifyContent: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 20,
+    scroll: {
+        flexGrow: 1,
     },
 
-    /* ── Badge ── */
-    badgeWrap: {
-        alignItems: 'center',
+    page: {
+        flex: 1,
+        minHeight: '100%',
+        paddingHorizontal: 28,
+        paddingTop: Platform.OS === 'ios' ? 58 : 38,
+        paddingBottom: 28,
     },
-    badge: {
+
+    /* ─────────────────────────
+       HEADER
+    ───────────────────────── */
+
+    topBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#eef2ff',
-        borderRadius: 999,
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-    },
-    submitting: { backgroundColor: '#aaa' },
-    badgeStar: {
-        color: INDIGO,
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    badgeText: {
-        color: INDIGO,
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 0.2,
+        justifyContent: 'space-between',
+        width: '100%',
     },
 
-    /* ── Hero ── */
-    heroText: {
-        fontSize: 30,
-        fontWeight: '800',
-        color: '#0f172a',
-        textAlign: 'center',
-        marginBottom: 10,
-        letterSpacing: -0.5,
+    logo: {
+        fontSize: 15,
+        fontWeight: '900',
+        letterSpacing: 2.5,
+        color: BLACK,
     },
-    heroAccent: {
-        color: INDIGO,
-        fontWeight: '800',
+
+    projectTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
     },
-    heroSub: {
-        fontSize: 13,
-        textAlign: 'center',
-        color: '#64748b',
-        lineHeight: 20,
+
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: BLACK,
+    },
+
+    projectText: {
+        fontSize: 9,
+        fontWeight: '700',
+        letterSpacing: 1.2,
+        color: MUTED,
+    },
+
+    /* ─────────────────────────
+       MAIN
+    ───────────────────────── */
+
+    main: {
+        width: '100%',
+        maxWidth: 560,
+        alignSelf: 'center',
+        flex: 1,
+        justifyContent: 'center',
+        paddingVertical: 50,
+    },
+
+    intro: {
+        marginBottom: 42,
+    },
+
+    eyebrow: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 2.5,
+        color: MUTED,
+        marginBottom: 18,
+    },
+
+    heading: {
+        fontSize: 42,
+        lineHeight: 46,
+        fontWeight: '900',
+        letterSpacing: -1.8,
+        color: BLACK,
+    },
+
+    headingAccent: {
+        color: BLACK,
+        fontWeight: '900',
+    },
+
+    description: {
+        marginTop: 20,
+        maxWidth: 390,
+        fontSize: 14,
+        lineHeight: 21,
+        color: MUTED,
+    },
+
+    /* ─────────────────────────
+       FORM
+    ───────────────────────── */
+
+    form: {
+        width: '100%',
+    },
+
+    field: {
+        marginBottom: 24,
+    },
+
+    label: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.5,
+        color: BLACK,
+        marginBottom: 9,
+    },
+
+    passwordLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+
+    forgot: {
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 1,
+        color: MUTED,
+    },
+
+    input: {
+        height: 50,
+        borderWidth: 0,
+        borderBottomWidth: 1,
+        borderBottomColor: BORDER,
+        borderRadius: 0,
+        paddingHorizontal: 0,
+        paddingVertical: 10,
+        fontSize: 16,
+        color: BLACK,
+        backgroundColor: 'transparent',
+    },
+
+    inputError: {
+        borderBottomColor: RED,
+    },
+
+    error: {
+        fontSize: 11,
+        color: RED,
+        marginTop: 7,
+    },
+
+    /* ─────────────────────────
+       ERROR
+    ───────────────────────── */
+
+    errorBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: -4,
         marginBottom: 20,
     },
 
-    /* ── Card ── */
-    card: {
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 24,
-        shadowColor: '#0f172a',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 3,
-    },
-    cardTitle: {
-        textAlign: 'center',
-        fontSize: 19,
-        fontWeight: '700',
-        color: '#0f172a',
-        marginBottom: 3,
-    },
-    cardSubtitle: {
-        textAlign: 'center',
-        fontSize: 13,
-        color: '#64748b',
-        marginBottom: 16,
+    errorLine: {
+        width: 3,
+        height: 28,
+        backgroundColor: RED,
+        marginRight: 10,
     },
 
-    /* ── Labels & Inputs ── */
-    label: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#374151',
-        marginBottom: 5,
-    },
-    input: {
-        paddingVertical:14,
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        fontSize: 14,
-        color: '#0f172a',
-        marginBottom: 4,
-    },
-    inputError: {
-        borderColor: '#f87171',
-    },
-    error: {
-        fontSize: 12,
-        color: '#ef4444',
-        marginTop: -6,
-        marginBottom: 8,
-        paddingHorizontal: 2,
-    },
-
-    /* ── Credential error banner ── */
-    credentialErrorBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderLeftWidth: 3,
-        backgroundColor: '#fef2f2',
-        borderColor: '#ef4444',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        marginVertical: 12,
-        gap: 8,
-    },
-    credentialErrorText: {
+    errorBannerText: {
         flex: 1,
-        fontSize: 13,
-        color: '#b91c1c',
-        lineHeight: 18,
+        fontSize: 12,
+        lineHeight: 17,
+        color: RED,
     },
 
-    /* ── Login Button ── */
-    loginBtn: {
-        paddingVertical:12,
-        backgroundColor: INDIGO_DARK,
-        borderRadius: 10,
+    /* ─────────────────────────
+       BUTTON
+    ───────────────────────── */
+
+    loginButton: {
+        height: 54,
+        backgroundColor: BLACK,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 4,
     },
-    loginBtnPressed: {
-        backgroundColor: INDIGO_DARK,
-    },
-    loginBtnLocked: {
-        backgroundColor: '#94a3b8',
-    },
-    loginText: {
-        color: '#fff',
-        fontSize: 15,
-        letterSpacing: 0.2,
+
+    loginPressed: {
+        opacity: 0.78,
     },
 
-    /* ── Forgot ── */
-    forgotWrap: {
-        alignItems: 'center',
-        paddingVertical: 10,
-    },
-    forgotText: {
-        color: INDIGO,
-        fontSize: 13,
+    loginLocked: {
+        backgroundColor: '#A3A3A3',
     },
 
-    /* ── Divider ── */
-    dividerRow: {
+    loginContent: {
+        width: '100%',
+        paddingHorizontal: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
-    },
-    line: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#d1d5db',
-    },
-    dividerText: {
-        marginHorizontal: 12,
-        color: '#d1d5db',
-        fontSize: 13,
+        justifyContent: 'space-between',
     },
 
-    /* ── Create Account Button ── */
-    registerBtn: {
-        paddingVertical: 12,
-        backgroundColor: GREEN_DARK,
-        borderRadius: 10,
-        alignItems: 'center',
+    loginText: {
+        color: WHITE,
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1.8,
+    },
+
+    arrow: {
+        color: WHITE,
+        fontSize: 22,
+        fontWeight: '300',
+    },
+
+    /* ─────────────────────────
+       REGISTER
+    ───────────────────────── */
+
+    registerRow: {
+        flexDirection: 'row',
         justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 26,
+        gap: 5,
     },
-    registerBtnPressed: {
-        backgroundColor: GREEN,
+
+    registerPrompt: {
+        fontSize: 12,
+        color: MUTED,
     },
-    registerText: {
-        color: '#fff',
-        fontSize:14,
-        letterSpacing: 0.2,
+
+    registerLink: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: BLACK,
+        textDecorationLine: 'underline',
+    },
+
+    /* ─────────────────────────
+       FOOTER
+    ───────────────────────── */
+
+    footer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+    },
+
+    footerText: {
+        fontSize: 8,
+        fontWeight: '700',
+        letterSpacing: 1,
+        color: '#A3A3A3',
+    },
+
+    footerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E5E5E5',
     },
 });

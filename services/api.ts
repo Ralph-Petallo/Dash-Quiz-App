@@ -1,10 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Platform } from 'react-native';
+
+export const API_BASE_URL =
+    Platform.OS === 'web'
+        ? 'http://127.0.0.1:8000/api'
+        : process.env.API_URL_BASE_SERVER;
 
 const api = axios.create({
     // change into localhost port if testing
-    // http://127.0.0.1:8000/api
-    baseURL: 'http://127.0.0.1:8000/api'
+    baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use(async (config) => {
@@ -19,7 +24,3 @@ api.interceptors.request.use(async (config) => {
 });
 
 export default api;
-
-function helpme() { return "awesome bro!" }
-
-helpme()
